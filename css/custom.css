@@ -1,0 +1,808 @@
+/* =====================================================================
+   Dengler Family Tree — heirloom detailing layered on top of Tailwind.
+   Connectors, paper texture, animations, modal, search, theme.
+   ===================================================================== */
+
+/* ---------- Palette (CSS custom properties) ---------- */
+:root {
+  --bg: #f4ecd8;
+  --surface: #fbf6ea;
+  --ink: #2b2118;
+  --muted: #5c4f3f;
+  --gold: #a8752f;
+  --gold-soft: #c79a5a;
+  --border: #d8c9a3;
+
+  --hairline: 1px solid var(--border);
+  --gold-hairline: 1px solid var(--gold);
+  --radius: 12px;
+  --shadow-card: 0 1px 2px rgba(43, 33, 24, 0.06), 0 6px 18px rgba(43, 33, 24, 0.08);
+  --shadow-lift: 0 4px 10px rgba(43, 33, 24, 0.12), 0 14px 34px rgba(43, 33, 24, 0.16);
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+html.dark {
+  --bg: #1b1712;
+  --surface: #24201a;
+  --ink: #ece2c9;
+  --muted: #b8ab8a;
+  --gold: #d4af37;
+  --gold-soft: #b9942f;
+  --border: #3a3226;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.45), 0 14px 34px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Base ---------- */
+html, body { min-height: 100%; }
+
+body {
+  background-color: var(--bg);
+  color: var(--ink);
+  /* Pure-CSS paper texture: soft blotches + fine noise via layered gradients. */
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(168, 117, 47, 0.05), transparent 42%),
+    radial-gradient(circle at 82% 12%, rgba(168, 117, 47, 0.04), transparent 40%),
+    radial-gradient(circle at 62% 78%, rgba(92, 79, 63, 0.05), transparent 46%),
+    repeating-linear-gradient(0deg, rgba(43, 33, 24, 0.012) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(43, 33, 24, 0.012) 0 1px, transparent 1px 3px);
+  background-attachment: fixed;
+  font-family: "Lora", Georgia, "Times New Roman", serif;
+}
+
+.font-display { font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif; }
+.font-body { font-family: "Lora", Georgia, "Times New Roman", serif; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: absolute; left: -999px; top: 0; z-index: 100;
+  background: var(--surface); color: var(--ink); padding: 0.6rem 1rem;
+  border: var(--gold-hairline); border-radius: 0 0 var(--radius) 0;
+}
+.skip-link:focus { left: 0; }
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.page-frame {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: clamp(1.25rem, 3vw, 2.75rem) clamp(0.75rem, 3vw, 2.25rem) 2rem;
+}
+
+/* ---------- Header ---------- */
+.site-header { margin-bottom: 1.5rem; }
+
+.header-fleuron {
+  color: var(--gold);
+  font-size: 1.6rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+  opacity: 0.9;
+}
+
+.site-title {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: clamp(2.4rem, 6vw, 4.25rem);
+  line-height: 1.02;
+  color: var(--ink);
+  margin: 0;
+}
+
+.header-rule, .footer-rule {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  margin: 0.6rem auto 0.4rem;
+  max-width: 30rem;
+  color: var(--gold);
+}
+.rule-line {
+  height: 1px; flex: 1;
+  background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+}
+.rule-mark { font-size: 1.05rem; opacity: 0.9; }
+
+.site-subtitle {
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.05rem, 2.2vw, 1.5rem);
+  color: var(--muted);
+  margin: 0.2rem 0 0;
+}
+
+/* ---------- Controls ---------- */
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.5rem auto 1.75rem;
+  max-width: 40rem;
+}
+
+.search-wrap { position: relative; flex: 1; max-width: 30rem; }
+
+.search-icon {
+  position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);
+  color: var(--muted); font-size: 1.15rem; pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.7rem 1rem 0.7rem 2.5rem;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: 999px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 1rem;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.search-input::placeholder { color: var(--muted); opacity: 0.8; }
+.search-input:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px rgba(168, 117, 47, 0.16); }
+
+.search-results {
+  position: absolute; z-index: 40; left: 0; right: 0; top: calc(100% + 0.4rem);
+  background: var(--surface);
+  border: var(--gold-hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  list-style: none; margin: 0; padding: 0.35rem;
+  max-height: 18rem; overflow-y: auto;
+}
+.search-option {
+  display: flex; flex-direction: column; gap: 0.1rem;
+  padding: 0.5rem 0.75rem; border-radius: 8px; cursor: pointer;
+}
+.search-option:hover, .search-option.active {
+  background: rgba(168, 117, 47, 0.12);
+}
+.opt-name { font-weight: 600; color: var(--ink); }
+.opt-meta { font-size: 0.82rem; color: var(--muted); }
+.search-empty { padding: 0.65rem 0.85rem; color: var(--muted); font-style: italic; }
+
+/* ---------- Theme toggle ---------- */
+.theme-toggle {
+  flex: 0 0 auto;
+  width: 3rem; height: 3rem;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: 999px;
+  box-shadow: var(--shadow-card);
+  color: var(--gold);
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.theme-toggle:hover { border-color: var(--gold); transform: translateY(-1px); }
+.theme-icon { position: absolute; font-size: 1.25rem; transition: opacity 0.25s var(--ease), transform 0.35s var(--ease); }
+.theme-icon-sun { opacity: 1; transform: rotate(0deg) scale(1); }
+.theme-icon-moon { opacity: 0; transform: rotate(-40deg) scale(0.6); }
+html.dark .theme-icon-sun { opacity: 0; transform: rotate(40deg) scale(0.6); }
+html.dark .theme-icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+
+/* ---------- Tree viewport ---------- */
+.tree-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1.5rem 0.5rem 2rem;
+  scrollbar-color: var(--gold-soft) transparent;
+}
+.tree-root {
+  display: flex;
+  justify-content: center;
+  min-width: min-content;
+  padding: 0 1rem;
+}
+
+/* ---------- Tree node ---------- */
+.tree-node {
+  display: flex;
+  flex-direction: column;   /* ancestors above, card below (root at bottom) */
+  align-items: center;
+  position: relative;
+}
+
+.tree-ancestors-collapser {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.45s var(--ease), opacity 0.4s var(--ease);
+  opacity: 1;
+}
+.tree-ancestors-collapser.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.tree-ancestors {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-height: 0;
+  /* max-content keeps each generation as wide as its true content so the grid
+     collapser (whose overflow:hidden would otherwise let it shrink to card
+     width) never lets an ancestor row bleed into a sibling branch. */
+  min-width: max-content;
+  overflow: hidden;
+}
+
+/* Connector zone beneath each parent column (desktop). */
+.tree-ancestors > .tree-node {
+  padding: 0 1.1rem 2.1rem;
+}
+/* vertical drop from parent card down to the bus */
+.tree-ancestors > .tree-node::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  height: 2.1rem;
+  border-left: var(--hairline);
+}
+/* horizontal bus linking the parents */
+.tree-ancestors > .tree-node::after {
+  content: "";
+  position: absolute;
+  bottom: 2.1rem;
+  left: 0; right: 0;
+  border-top: var(--hairline);
+}
+.tree-ancestors > .tree-node:first-child::after { left: 50%; }
+.tree-ancestors > .tree-node:last-child::after { right: 50%; }
+.tree-ancestors > .tree-node:only-child::after { display: none; }
+
+/* ---------- Branch toggle (chevron bead on the stem) ---------- */
+.branch-toggle {
+  position: relative;
+  z-index: 2;
+  width: 1.9rem; height: 1.9rem;
+  margin: 0;
+  display: grid; place-items: center;
+  background: var(--surface);
+  border: var(--gold-hairline);
+  border-radius: 999px;
+  color: var(--gold);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.2s var(--ease), background 0.2s var(--ease);
+}
+.branch-toggle:hover { transform: scale(1.08); background: rgba(168, 117, 47, 0.1); }
+/* stem line running through the toggle bead, bridging bus to card */
+.branch-toggle::before {
+  content: "";
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  top: -1.6rem; bottom: -1rem;
+  border-left: var(--hairline);
+  z-index: -1;
+}
+/* when this node's ancestors are collapsed, drop the upward stub */
+.tree-node:has(> .tree-ancestors-collapser.is-collapsed) > .branch-toggle::before {
+  top: -0.1rem;
+}
+.chev {
+  width: 0.5rem; height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-135deg);   /* points up when expanded */
+  transition: transform 0.3s var(--ease);
+  margin-top: 2px;
+}
+.branch-toggle[aria-expanded="false"] .chev {
+  transform: rotate(45deg);     /* points down when collapsed */
+  margin-top: -2px;
+}
+
+/* ---------- Card wrap + card ---------- */
+.tree-card-wrap { margin-top: 1rem; }
+.tree-node:not(:has(> .branch-toggle)) > .tree-card-wrap { margin-top: 0.9rem; }
+
+.card-and-chips {
+  display: flex;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.person-card {
+  position: relative;
+  text-align: left;
+  min-width: 12.5rem;
+  max-width: 15rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease);
+  overflow: hidden;
+}
+/* gold hairline accent along the top */
+.person-card::before {
+  content: "";
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold-soft), transparent);
+  opacity: 0.65;
+}
+.person-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--gold);
+}
+.person-card.is-placeholder {
+  border-style: dashed;
+  border-color: var(--gold-soft);
+}
+.card-inner { display: flex; flex-direction: column; gap: 0.15rem; }
+.card-name-row { display: flex; align-items: baseline; gap: 0.35rem; }
+.card-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.card-qmark {
+  color: var(--gold);
+  font-weight: 700;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.2rem;
+}
+.card-relation {
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+.card-life { font-size: 0.92rem; color: var(--ink); font-variant-numeric: oldstyle-nums; }
+.card-sources {
+  font-size: 0.72rem;
+  color: var(--muted);
+  border: var(--hairline);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+}
+.living-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: var(--gold-hairline);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+}
+
+/* Subtle affordance for an ancestor's collateral (non-rendered) children.
+   Rendered inside the card <button>; its click stops propagation and opens
+   the modal scrolled to the Family section. */
+.card-more-children {
+  font-size: 0.72rem;
+  font-style: italic;
+  color: var(--muted);
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.card-more-children:hover { color: var(--gold); border-color: var(--gold-soft); }
+
+/* ---------- Spouse chip ---------- */
+.spouse-chip {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 0.1rem;
+  min-width: 8rem;
+  max-width: 11rem;
+  padding: 0.6rem 0.75rem;
+  background: color-mix(in srgb, var(--surface) 88%, var(--gold) 12%);
+  border: 1px dashed var(--gold-soft);
+  border-radius: var(--radius);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+.spouse-chip:hover { transform: translateY(-3px); box-shadow: var(--shadow-lift); border-color: var(--gold); }
+.chip-ring { color: var(--gold); font-size: 0.9rem; line-height: 1; }
+.chip-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* ---------- Endcap ---------- */
+.tree-endcap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding-bottom: 1.1rem;
+  color: var(--muted);
+  opacity: 0.75;
+  position: relative;
+}
+.tree-endcap::after {
+  content: "";
+  position: absolute;
+  left: 50%; bottom: 0; height: 1.1rem;
+  border-left: 1px dashed var(--border);
+}
+.endcap-fleuron { color: var(--gold-soft); font-size: 1.1rem; line-height: 1; }
+.endcap-text { font-style: italic; font-size: 0.78rem; }
+
+/* ---------- Pulse highlight ---------- */
+.pulse-gold { animation: pulseGold 2.2s var(--ease); }
+@keyframes pulseGold {
+  0% { box-shadow: 0 0 0 0 rgba(168, 117, 47, 0.0); }
+  15% { box-shadow: 0 0 0 4px rgba(168, 117, 47, 0.55), var(--shadow-lift); border-color: var(--gold); }
+  45% { box-shadow: 0 0 0 6px rgba(168, 117, 47, 0.25), var(--shadow-lift); }
+  100% { box-shadow: 0 0 0 0 rgba(168, 117, 47, 0.0); }
+}
+html.dark .pulse-gold {
+  animation: pulseGoldDark 2.2s var(--ease);
+}
+@keyframes pulseGoldDark {
+  0% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.0); }
+  15% { box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.6), var(--shadow-lift); border-color: var(--gold); }
+  45% { box-shadow: 0 0 0 6px rgba(212, 175, 55, 0.28), var(--shadow-lift); }
+  100% { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.0); }
+}
+
+/* ---------- Enter animation ---------- */
+.tree-node.enter > .tree-card-wrap,
+.tree-node.enter > .tree-endcap {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.tree-node.enter.entered > .tree-card-wrap,
+.tree-node.enter.entered > .tree-endcap {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.6s var(--ease) var(--enter-delay, 0ms), transform 0.6s var(--ease) var(--enter-delay, 0ms);
+}
+
+/* ---------- Modal ---------- */
+.person-dialog {
+  width: min(38rem, 92vw);
+  max-height: 88vh;
+  padding: 0;
+  border: var(--gold-hairline);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+  overflow: hidden;
+}
+.person-dialog::backdrop {
+  background: rgba(20, 15, 9, 0.55);
+  backdrop-filter: blur(2px);
+}
+.person-dialog[open] { animation: dialogIn 0.3s var(--ease); }
+@keyframes dialogIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-close {
+  position: absolute; top: 0.75rem; right: 0.75rem; z-index: 3;
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  background: transparent;
+  border: var(--hairline);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease), background 0.2s var(--ease);
+}
+.modal-close:hover { color: var(--gold); border-color: var(--gold); background: rgba(168,117,47,0.08); }
+
+.dialog-body {
+  padding: 2rem 1.9rem 1.9rem;
+  overflow-y: auto;
+  max-height: 88vh;
+}
+.modal-header { border-bottom: var(--hairline); padding-bottom: 0.9rem; margin-bottom: 1rem; }
+.modal-name {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.9rem, 4vw, 2.5rem);
+  font-weight: 600; line-height: 1.05; margin: 0; color: var(--ink);
+}
+.modal-nickname, .modal-maiden { font-style: italic; color: var(--muted); margin: 0.15rem 0 0; }
+.modal-relation {
+  margin: 0.4rem 0 0;
+  font-size: 0.8rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold);
+}
+.modal-living { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+.modal-living-note { color: var(--muted); font-style: italic; }
+
+.modal-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0 0 1.1rem;
+}
+.fact-term { color: var(--gold); font-size: 0.8rem; letter-spacing: 0.04em; text-transform: uppercase; padding-top: 0.15rem; }
+.fact-value { color: var(--ink); margin: 0; }
+
+.modal-subhead {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.4rem; font-weight: 600; color: var(--ink);
+  margin: 0 0 0.4rem;
+}
+.modal-story { margin-bottom: 1.1rem; }
+.modal-story-text { margin: 0; line-height: 1.65; color: var(--ink); }
+
+.modal-uncertain {
+  margin-bottom: 1.1rem;
+  background: rgba(168, 117, 47, 0.08);
+  border: 1px dashed var(--gold-soft);
+  border-radius: var(--radius);
+  padding: 0.85rem 1rem;
+}
+.uncertain-list { margin: 0; padding-left: 1.1rem; color: var(--muted); }
+.uncertain-list li { margin: 0.25rem 0; line-height: 1.5; }
+
+/* Family cross-links: Parents / Spouse / Children / Siblings, each a button
+   that navigates the open modal to that relative. */
+.modal-family { margin-bottom: 1.1rem; }
+.family-group { margin-bottom: 0.7rem; }
+.family-group:last-child { margin-bottom: 0; }
+.family-group-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 500;
+}
+.family-group-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.family-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.35rem 0.7rem;
+  background: var(--bg);
+  border: var(--hairline);
+  border-radius: 999px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.family-link:hover {
+  border-color: var(--gold);
+  background: rgba(168, 117, 47, 0.08);
+  transform: translateY(-1px);
+}
+.family-link-name { font-weight: 600; }
+.family-link-meta { font-size: 0.78rem; color: var(--muted); font-style: italic; }
+
+.modal-sources { margin-top: 0.5rem; }
+.source-list { list-style: none; margin: 0; padding: 0; }
+.source-item {
+  padding: 0.55rem 0; border-top: var(--hairline);
+  display: flex; flex-direction: column; gap: 0.15rem;
+}
+.source-item:first-child { border-top: none; }
+.source-link { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; font-weight: 500; }
+.source-link:hover { color: var(--ink); }
+.source-detail { font-size: 0.85rem; color: var(--muted); }
+
+/* ---------- Footer ---------- */
+.site-footer { margin-top: 2.5rem; color: var(--muted); }
+.footer-disclaimer { margin: 0.3rem 0 0; font-size: 0.9rem; }
+.footer-note { margin: 0.25rem 0 0; font-size: 0.82rem; font-style: italic; opacity: 0.85; }
+
+/* ---------- Mobile: vertical stacked outline with indent + connectors ---------- */
+@media (max-width: 720px) {
+  .tree-root { justify-content: flex-start; padding: 0 0.25rem; }
+
+  .tree-node {
+    flex-direction: column-reverse;  /* card on top, ancestors indented below */
+    align-items: stretch;
+  }
+
+  .tree-ancestors {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+    padding-left: 1.4rem;
+    position: relative;
+    min-width: 0;   /* release desktop max-content so the outline stays narrow */
+  }
+  /* vertical spine of the indent */
+  .tree-ancestors::before {
+    content: "";
+    position: absolute;
+    left: 0.5rem; top: 0; bottom: 0.9rem;
+    border-left: var(--hairline);
+  }
+
+  .tree-ancestors > .tree-node { padding: 0.35rem 0 0 0.9rem; position: relative; }
+  /* horizontal tick from spine to each child */
+  .tree-ancestors > .tree-node::before {
+    left: -0.9rem; top: 1.5rem; bottom: auto;
+    height: 0; width: 0.85rem;
+    border-left: none;
+    border-top: var(--hairline);
+  }
+  .tree-ancestors > .tree-node::after { display: none; }
+
+  .branch-toggle { align-self: flex-start; margin: 0.4rem 0 0 0.25rem; }
+  .branch-toggle::before { display: none; }
+  .tree-node:has(> .tree-ancestors-collapser.is-collapsed) > .branch-toggle::before { display: none; }
+
+  .tree-card-wrap { margin-top: 0; }
+  .card-and-chips { flex-wrap: wrap; }
+  .person-card { min-width: 0; max-width: none; flex: 1 1 100%; }
+  .spouse-chip { max-width: none; }
+
+  .tree-endcap { align-items: flex-start; padding-left: 0.9rem; }
+  .tree-endcap::after { left: 0.3rem; }
+
+  .controls { flex-wrap: wrap; }
+}
+
+/* ---------- Unlock gate ---------- */
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(168, 117, 47, 0.08), transparent 60%),
+    var(--bg);
+  transition: opacity 0.5s var(--ease), visibility 0.5s var(--ease);
+}
+.gate[hidden] { display: none; }
+.gate.gate-dismissed { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.gate-card {
+  width: min(28rem, 100%);
+  text-align: center;
+  background: var(--surface);
+  border: var(--gold-hairline);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+  padding: clamp(1.75rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.5rem);
+}
+.gate-card .header-fleuron { font-size: 1.8rem; }
+.gate-title {
+  font-size: clamp(1.9rem, 5vw, 2.9rem);
+  font-weight: 600;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0.2rem 0 0;
+}
+.gate-note {
+  font-style: italic;
+  color: var(--muted);
+  margin: 0.4rem 0 1.4rem;
+  font-size: 0.95rem;
+}
+.gate-form { display: flex; flex-direction: column; gap: 0.85rem; }
+.gate-input-wrap { position: relative; }
+.gate-pass {
+  width: 100%;
+  padding: 0.75rem 2.75rem 0.75rem 1rem;
+  background: var(--bg);
+  border: var(--hairline);
+  border-radius: 999px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+.gate-pass:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(168, 117, 47, 0.16); }
+.gate-eye {
+  position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%);
+  width: 2rem; height: 2rem;
+  display: grid; place-items: center;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--muted); font-size: 1.1rem; border-radius: 999px;
+}
+.gate-eye:hover { color: var(--gold); }
+.gate-remember {
+  display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+  font-size: 0.85rem; color: var(--muted); cursor: pointer;
+}
+.gate-remember input { accent-color: var(--gold); width: 1rem; height: 1rem; }
+.gate-unlock {
+  margin-top: 0.2rem;
+  padding: 0.75rem 1rem;
+  background: var(--gold);
+  color: var(--surface);
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: transform 0.2s var(--ease), filter 0.2s var(--ease);
+}
+html.dark .gate-unlock { color: #1b1712; }
+.gate-unlock:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.gate-error {
+  margin: 0.2rem 0 0;
+  color: #a8341f;
+  font-size: 0.9rem;
+}
+html.dark .gate-error { color: #e0876b; }
+.gate-card.shake { animation: gateShake 0.45s var(--ease); }
+@keyframes gateShake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-9px); }
+  30% { transform: translateX(8px); }
+  45% { transform: translateX(-6px); }
+  60% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* App hidden until unlocked */
+.page-frame[hidden] { display: none; }
+
+/* ---------- Lock button ---------- */
+.lock-btn {
+  position: absolute;
+  z-index: 20;   /* sit above the full-width (centered) header block */
+  top: clamp(1rem, 3vw, 2rem);
+  right: clamp(0.75rem, 3vw, 2.25rem);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.lock-btn:hover { color: var(--gold); border-color: var(--gold); }
+.lock-icon { font-size: 0.9rem; }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .tree-node.enter > .tree-card-wrap,
+  .tree-node.enter > .tree-endcap { opacity: 1; transform: none; }
+}

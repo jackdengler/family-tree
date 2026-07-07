@@ -1,0 +1,8 @@
+tools/node_modules/
+node_modules/
+.DS_Store
+
+# Real plaintext family data is never committed — only the encrypted
+# js/data.enc.js ships. (tools/placeholder-data.json is FAKE sample data
+# kept as a test fixture; anything matching *.plain.json stays ignored.)
+*.plain.json

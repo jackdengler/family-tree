@@ -1,0 +1,5 @@
+Runtime-toggled class names (styled in css/custom.css, listed here so content
+scanning is aware of them):
+dark pulse-gold enter entered is-collapsed is-living is-uncertain is-placeholder active
+card-more-children modal-family family-group family-group-label family-group-links
+family-link family-link-name family-link-meta

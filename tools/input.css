@@ -1,0 +1,5 @@
+/* Tailwind entry point. Compiled by the Tailwind CLI into ../css/tailwind.css.
+   The heirloom detailing lives in ../css/custom.css and is layered on top. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

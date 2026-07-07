@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Dengler Family — An American Family History</title>
+  <meta name="description" content="An interactive ancestor tree of the Dengler family, researched from public records." />
+
+  <!-- Google Fonts (only permitted external dependency) with graceful serif fallbacks. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
+
+  <!-- Precompiled Tailwind, then heirloom detailing on top. All paths relative. -->
+  <link rel="stylesheet" href="css/tailwind.css" />
+  <link rel="stylesheet" href="css/custom.css" />
+</head>
+<body class="bg-paper text-ink font-body antialiased">
+
+  <a href="#tree-root" class="skip-link">Skip to the family tree</a>
+
+  <!-- ============ Unlock gate ============ -->
+  <div id="gate" class="gate">
+    <div id="gate-card" class="gate-card">
+      <div class="header-fleuron" aria-hidden="true">❦</div>
+      <h1 class="font-display gate-title">The Dengler Family Archive</h1>
+      <div class="header-rule" aria-hidden="true">
+        <span class="rule-line"></span>
+        <span class="rule-mark">❧</span>
+        <span class="rule-line"></span>
+      </div>
+      <p class="gate-note">This archive is private to the family.</p>
+      <form id="gate-form" class="gate-form" autocomplete="off">
+        <div class="gate-input-wrap">
+          <label for="gate-pass" class="sr-only">Passphrase</label>
+          <input id="gate-pass" class="gate-pass" type="password" placeholder="Passphrase"
+                 autocomplete="off" autocapitalize="none" spellcheck="false" />
+          <button type="button" id="gate-eye" class="gate-eye" aria-pressed="false" aria-label="Show passphrase">☉</button>
+        </div>
+        <label class="gate-remember" for="gate-remember">
+          <input type="checkbox" id="gate-remember" /> Remember this device
+        </label>
+        <button type="submit" id="gate-unlock" class="gate-unlock">Unlock</button>
+        <p id="gate-error" class="gate-error" role="alert" hidden>That key doesn’t fit — try again.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="page-frame" hidden>
+    <button id="lock-btn" type="button" class="lock-btn" aria-label="Lock the archive">
+      <span class="lock-icon" aria-hidden="true">⚿</span> Lock
+    </button>
+
+    <!-- ============ Ornamental header ============ -->
+    <header class="site-header text-center">
+      <div class="header-fleuron" aria-hidden="true">❦</div>
+      <h1 id="tree-title" class="font-display site-title">The Dengler Family</h1>
+      <div class="header-rule" aria-hidden="true">
+        <span class="rule-line"></span>
+        <span class="rule-mark">❧</span>
+        <span class="rule-line"></span>
+      </div>
+      <p id="tree-subtitle" class="site-subtitle font-display">An American Family History</p>
+    </header>
+
+    <!-- ============ Controls ============ -->
+    <div class="controls">
+      <div class="search-wrap">
+        <label for="search-input" class="sr-only">Search for a family member</label>
+        <span class="search-icon" aria-hidden="true">⌕</span>
+        <input
+          id="search-input"
+          type="text"
+          class="search-input"
+          placeholder="Search a name…"
+          autocomplete="off"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="search-results"
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+        />
+        <ul id="search-results" class="search-results" role="listbox" aria-label="Search results" hidden></ul>
+      </div>
+
+      <button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
+        <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+        <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
+      </button>
+    </div>
+
+    <!-- ============ Tree ============ -->
+    <main class="tree-viewport" aria-label="Ancestor tree">
+      <div id="tree-root" class="tree-root"></div>
+    </main>
+
+    <!-- ============ Footer ============ -->
+    <footer class="site-footer text-center">
+      <div class="footer-rule" aria-hidden="true">
+        <span class="rule-line"></span>
+        <span class="rule-mark">❦</span>
+        <span class="rule-line"></span>
+      </div>
+      <p id="footer-disclaimer" class="footer-disclaimer">Compiled from free public records; see sources on each person.</p>
+      <p class="footer-note">Researched from public records. Living relatives’ details are withheld for privacy.</p>
+    </footer>
+  </div>
+
+  <!-- ============ Person modal ============ -->
+  <dialog id="person-dialog" class="person-dialog" aria-labelledby="dialog-body">
+    <button type="button" class="modal-close" aria-label="Close details">✕</button>
+    <div id="dialog-body" class="dialog-body"></div>
+  </dialog>
+
+  <script src="js/data.enc.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

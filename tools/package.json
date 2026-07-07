@@ -1,0 +1,12 @@
+{
+  "name": "dengler-family-tree-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build tooling (Tailwind CLI) for the Dengler Family Tree site. The site itself has no runtime dependencies.",
+  "scripts": {
+    "build:css": "tailwindcss -c ./tailwind.config.js -i ./input.css -o ../css/tailwind.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}
