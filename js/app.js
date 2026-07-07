@@ -75,13 +75,14 @@
     return out.filter(Boolean).join(" ");
   }
   function lifespanText(p) {
-    if (p.living) return "Living";
+    // Date-based lifespan for everyone. Living people (no death) read "b. YYYY";
+    // the "Living" badge is shown alongside, not in place of, this text.
     var b = precisionYear(p.birth);
     var d = precisionYear(p.death);
     if (b && d) return b + "–" + d;
     if (b) return "b. " + b;
     if (d) return "d. " + d;
-    return "Dates unknown";
+    return p.living ? "Living" : "Dates unknown";
   }
   function sourceCount(p) {
     var ids = {};
@@ -185,10 +186,8 @@
     inner.appendChild(el("span", "card-relation", p.relation || ""));
 
     var metaRow = el("span", "card-meta");
-    var life = el("span", "card-life");
-    if (p.living) { life.classList.add("living-badge"); life.textContent = "Living"; }
-    else { life.textContent = lifespanText(p); }
-    metaRow.appendChild(life);
+    metaRow.appendChild(el("span", "card-life", lifespanText(p)));
+    if (p.living) metaRow.appendChild(el("span", "living-badge", "Living"));
     var sc = sourceCount(p);
     if (sc > 0) metaRow.appendChild(el("span", "card-sources", "sources: " + sc));
 
@@ -355,17 +354,15 @@
     if (p.name && p.name.nickname) header.appendChild(el("p", "modal-nickname", "known as “" + p.name.nickname + "”"));
     if (p.name && p.name.maidenName) header.appendChild(el("p", "modal-maiden", "née " + p.name.maidenName));
     header.appendChild(el("p", "modal-relation", p.relation || ""));
+    if (p.living) {
+      var lb = el("p", "modal-living");
+      lb.appendChild(el("span", "living-badge", "Living"));
+      header.appendChild(lb);
+    }
     dialogBody.appendChild(header);
 
-    if (p.living) {
-      var badge = el("p", "modal-living");
-      badge.appendChild(el("span", "living-badge", "Living"));
-      badge.appendChild(el("span", "modal-living-note",
-        "Details for living relatives are withheld for privacy."));
-      dialogBody.appendChild(badge);
-      return;
-    }
-
+    // Living people are now shown in full (dates, place, occupation, story,
+    // uncertainties, sources) driven by the data — the same path as everyone.
     var dl = el("dl", "modal-facts");
     function addFact(term, value) {
       if (!value) return;
@@ -673,7 +670,7 @@
   /* ===================================================================
      Unlock gate
      =================================================================== */
-  var PASSCODE_LENGTH = 8;   // number of digits (drives the dot count)
+  var PASSCODE_LENGTH = 4;   // number of digits (drives the dot count)
 
   var gate = document.getElementById("gate");
   var gateRemember = document.getElementById("gate-remember");

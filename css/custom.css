@@ -623,7 +623,12 @@ html.dark .pulse-gold {
 
 /* ---------- Mobile: vertical stacked outline with indent + connectors ---------- */
 @media (max-width: 720px) {
-  .tree-root { justify-content: flex-start; padding: 0 0.25rem; }
+  .page-frame { padding-left: 0.9rem; padding-right: 0.9rem; }
+  /* Reserve room so the top-right Lock button never crowds the header. */
+  .site-header { padding-top: 2.75rem; }
+
+  .tree-viewport { padding: 1rem 0.25rem 1.5rem; }
+  .tree-root { justify-content: flex-start; padding: 0; min-width: 0; }
 
   .tree-node {
     flex-direction: column-reverse;  /* card on top, ancestors indented below */
@@ -634,7 +639,7 @@ html.dark .pulse-gold {
     flex-direction: column;
     align-items: stretch;
     gap: 0.25rem;
-    padding-left: 1.4rem;
+    padding-left: 1.05rem;
     position: relative;
     min-width: 0;   /* release desktop max-content so the outline stays narrow */
   }
@@ -642,33 +647,61 @@ html.dark .pulse-gold {
   .tree-ancestors::before {
     content: "";
     position: absolute;
-    left: 0.5rem; top: 0; bottom: 0.9rem;
+    left: 0.4rem; top: 0; bottom: 0.9rem;
     border-left: var(--hairline);
   }
 
-  .tree-ancestors > .tree-node { padding: 0.35rem 0 0 0.9rem; position: relative; }
+  .tree-ancestors > .tree-node { padding: 0.35rem 0 0 0.7rem; position: relative; }
   /* horizontal tick from spine to each child */
   .tree-ancestors > .tree-node::before {
-    left: -0.9rem; top: 1.5rem; bottom: auto;
-    height: 0; width: 0.85rem;
+    left: -0.7rem; top: 1.6rem; bottom: auto;
+    height: 0; width: 0.65rem;
     border-left: none;
     border-top: var(--hairline);
   }
   .tree-ancestors > .tree-node::after { display: none; }
 
-  .branch-toggle { align-self: flex-start; margin: 0.4rem 0 0 0.25rem; }
+  /* Larger, thumb-friendly collapse target (>=44px hit area). */
+  .branch-toggle {
+    align-self: flex-start;
+    width: 2.75rem; height: 2.75rem;
+    margin: 0.35rem 0 0 0;
+  }
+  .branch-toggle .chev { width: 0.6rem; height: 0.6rem; }
   .branch-toggle::before { display: none; }
   .tree-node:has(> .tree-ancestors-collapser.is-collapsed) > .branch-toggle::before { display: none; }
 
   .tree-card-wrap { margin-top: 0; }
   .card-and-chips { flex-wrap: wrap; }
-  .person-card { min-width: 0; max-width: none; flex: 1 1 100%; }
-  .spouse-chip { max-width: none; }
+  .person-card { min-width: 0; max-width: none; flex: 1 1 100%; padding: 1rem; }
+  .card-name { font-size: 1.25rem; }
+  .spouse-chip { max-width: none; flex: 1 1 100%; }
 
-  .tree-endcap { align-items: flex-start; padding-left: 0.9rem; }
-  .tree-endcap::after { left: 0.3rem; }
+  .tree-endcap { align-items: flex-start; padding-left: 0.7rem; }
+  .tree-endcap::after { left: 0.25rem; }
 
-  .controls { flex-wrap: wrap; }
+  .controls { flex-wrap: wrap; gap: 0.6rem; }
+  .search-wrap { flex: 1 1 100%; max-width: none; }
+}
+
+/* Phone-specific: full-screen modal, comfortable gate, no overflow. */
+@media (max-width: 480px) {
+  .page-frame { padding-left: 0.75rem; padding-right: 0.75rem; }
+  .site-title { font-size: clamp(2rem, 9vw, 2.6rem); }
+
+  /* Modal fills the screen and scrolls internally. */
+  .person-dialog {
+    width: 100vw; max-width: 100vw;
+    height: 100dvh; max-height: 100dvh;
+    margin: 0; inset: 0;
+    border-radius: 0; border-left: none; border-right: none;
+  }
+  .dialog-body { max-height: 100dvh; padding: 1.6rem 1.15rem 2.5rem; }
+  .modal-close { width: 2.75rem; height: 2.75rem; top: 0.6rem; right: 0.6rem; font-size: 1.1rem; }
+  .source-link { padding: 0.15rem 0; display: inline-block; } /* easier tap target */
+  .family-link { padding: 0.5rem 0.8rem; }
+  /* NB: phone overrides for the gate/keypad/lock live in a media block at the
+     end of the file, so they come after those components' base rules and win. */
 }
 
 /* ---------- Unlock gate ---------- */
@@ -829,6 +862,18 @@ html.dark .gate-error { color: #e0876b; }
 }
 .lock-btn:hover { color: var(--gold); border-color: var(--gold); }
 .lock-icon { font-size: 0.9rem; }
+
+/* ---------- Phone overrides for gate / keypad / lock ----------
+   Placed after the gate, keypad and lock-button base rules so these
+   equal-specificity overrides win (media queries add no specificity). */
+@media (max-width: 480px) {
+  .gate { padding: 1rem; }
+  .gate-card { padding: 1.5rem 1rem 1.4rem; width: 100%; }
+  .passcode-keypad { grid-template-columns: repeat(3, 4.25rem); gap: 0.65rem; }
+  .key { width: 4.25rem; height: 4.25rem; }   /* 68px — comfortably >=44px, fits 360 */
+  .key-digit { font-size: 1.55rem; }
+  .lock-btn { top: 0.7rem; right: 0.6rem; padding: 0.4rem 0.7rem; }
+}
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
