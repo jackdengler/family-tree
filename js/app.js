@@ -673,24 +673,56 @@
   /* ===================================================================
      Unlock gate
      =================================================================== */
+  var PASSCODE_LENGTH = 8;   // number of digits (drives the dot count)
+
   var gate = document.getElementById("gate");
-  var gateForm = document.getElementById("gate-form");
-  var gatePass = document.getElementById("gate-pass");
-  var gateEye = document.getElementById("gate-eye");
   var gateRemember = document.getElementById("gate-remember");
   var gateError = document.getElementById("gate-error");
   var gateCard = document.getElementById("gate-card");
+  var gateDots = document.getElementById("passcode-dots");
+  var keypad = document.getElementById("passcode-keypad");
   var pageFrame = document.querySelector(".page-frame");
   var lockBtn = document.getElementById("lock-btn");
 
-  function showError(msg) {
-    gateError.textContent = msg || "That key doesn’t fit — try again.";
-    gateError.hidden = false;
-    if (!prefersReducedMotion()) {
-      gateCard.classList.remove("shake");
-      void gateCard.offsetWidth;
-      gateCard.classList.add("shake");
+  var entry = "";          // digits entered so far (never rendered as text)
+  var passcodeBusy = false; // true while decrypt is in flight
+
+  // Build the dot row from PASSCODE_LENGTH.
+  function buildDots() {
+    if (!gateDots) return;
+    gateDots.innerHTML = "";
+    for (var i = 0; i < PASSCODE_LENGTH; i++) {
+      gateDots.appendChild(el("span", "passcode-dot"));
     }
+  }
+  function renderDots() {
+    if (!gateDots) return;
+    var dots = gateDots.querySelectorAll(".passcode-dot");
+    for (var i = 0; i < dots.length; i++) {
+      dots[i].classList.toggle("filled", i < entry.length);
+    }
+    gateDots.setAttribute("aria-label",
+      "Passcode, " + entry.length + " of " + PASSCODE_LENGTH + " digits entered");
+  }
+  function resetEntry() {
+    entry = "";
+    renderDots();
+  }
+
+  function showError(msg) {
+    gateError.textContent = msg || "Wrong passcode";
+    gateError.hidden = false;
+    if (!prefersReducedMotion() && gateDots) {
+      gateDots.classList.remove("shake");
+      void gateDots.offsetWidth;
+      gateDots.classList.add("shake");
+    }
+  }
+
+  function focusKeypad() {
+    if (!keypad) return;
+    var first = keypad.querySelector(".key[data-digit]");
+    if (first) { try { first.focus(); } catch (e) {} }
   }
 
   function storeKey(rawB64, remember) {
@@ -712,9 +744,11 @@
     } catch (e) {}
   }
 
+  var gateHideTimer = null;
   function revealApp(focusSearch) {
     gate.classList.add("gate-dismissed");
-    window.setTimeout(function () { gate.hidden = true; }, prefersReducedMotion() ? 0 : 520);
+    window.clearTimeout(gateHideTimer);
+    gateHideTimer = window.setTimeout(function () { gate.hidden = true; }, prefersReducedMotion() ? 0 : 520);
     pageFrame.hidden = false;
     if (focusSearch && searchInput) {
       window.setTimeout(function () { searchInput.focus(); }, 200);
@@ -726,61 +760,92 @@
     revealApp(opts && opts.focusSearch);
   }
 
+  // Show the (empty) passcode gate and put focus on the keypad.
+  function showGate() {
+    window.clearTimeout(gateHideTimer);  // cancel any pending reveal-hide
+    resetEntry();
+    gateError.hidden = true;
+    gate.hidden = false;
+    gate.classList.remove("gate-dismissed");
+    window.requestAnimationFrame(focusKeypad);
+  }
+
   // Attempt auto-unlock from a cached raw key (session or "remembered" device).
   function tryCachedUnlock() {
     var raw = readStoredKey();
-    if (!raw || !enc) { gate.hidden = false; return; }
+    if (!raw || !enc) { showGate(); return; }
     importRawKey(b64ToBytes(raw))
       .then(decryptWithKey)
       .then(function (data) { unlockWithData(data, { focusSearch: false }); })
       .catch(function () {
         clearStoredKey();
-        gate.hidden = false;
-        if (gatePass) gatePass.focus();
+        showGate();
       });
   }
 
-  if (gateForm) {
-    gateForm.addEventListener("submit", function (e) {
-      e.preventDefault();
-      gateError.hidden = true;
-      var pass = gatePass.value;
-      if (!pass) { showError("Please enter the passphrase."); return; }
-      if (!enc) { showError("The archive payload is missing."); return; }
-      var unlockBtn = document.getElementById("gate-unlock");
-      if (unlockBtn) unlockBtn.disabled = true;
+  // Try the entered passcode: derive key, decrypt. On success cache + unlock;
+  // on the wrong code, shake the dot row, announce, and clear the dots.
+  function submitPasscode() {
+    if (passcodeBusy || !enc) return;
+    passcodeBusy = true;
+    gateError.hidden = true;
+    var derivedKey;
+    var code = entry;
+    deriveKeyFromPass(code)
+      .then(function (key) { derivedKey = key; return decryptWithKey(key); })
+      .then(function (data) {
+        return window.crypto.subtle.exportKey("raw", derivedKey).then(function (raw) {
+          storeKey(bytesToB64(raw), gateRemember && gateRemember.checked);
+          resetEntry();
+          unlockWithData(data, { focusSearch: true });
+        });
+      })
+      .catch(function () {
+        // AES-GCM authentication failure => wrong passcode (DOMException).
+        showError("Wrong passcode");
+        window.setTimeout(function () {
+          resetEntry();
+          focusKeypad();
+        }, prefersReducedMotion() ? 0 : 450);
+      })
+      .then(function () { passcodeBusy = false; });
+  }
 
-      var derivedKey;
-      deriveKeyFromPass(pass)
-        .then(function (key) { derivedKey = key; return decryptWithKey(key); })
-        .then(function (data) {
-          // Cache the derived raw key so refreshes don't re-prompt.
-          return window.crypto.subtle.exportKey("raw", derivedKey).then(function (raw) {
-            storeKey(bytesToB64(raw), gateRemember && gateRemember.checked);
-            gatePass.value = "";
-            unlockWithData(data, { focusSearch: true });
-          });
-        })
-        .catch(function (err) {
-          // AES-GCM authentication failure => wrong passphrase (DOMException).
-          showError("That key doesn’t fit — try again.");
-          gatePass.focus();
-          gatePass.select();
-        })
-        .then(function () { if (unlockBtn) unlockBtn.disabled = false; });
+  function addDigit(d) {
+    if (passcodeBusy || entry.length >= PASSCODE_LENGTH) return;
+    gateError.hidden = true;
+    entry += d;
+    renderDots();
+    if (entry.length === PASSCODE_LENGTH) {
+      // Let the final dot paint before deriving (which can block briefly).
+      window.setTimeout(submitPasscode, prefersReducedMotion() ? 0 : 90);
+    }
+  }
+  function deleteDigit() {
+    if (passcodeBusy || !entry.length) return;
+    gateError.hidden = true;
+    entry = entry.slice(0, -1);
+    renderDots();
+  }
+
+  buildDots();
+  renderDots();
+
+  if (keypad) {
+    keypad.addEventListener("click", function (e) {
+      var btn = e.target.closest("button.key");
+      if (!btn) return;
+      if (btn.dataset.action === "delete") deleteDigit();
+      else if (btn.dataset.digit != null) addDigit(btn.dataset.digit);
     });
   }
 
-  if (gateEye) {
-    gateEye.addEventListener("click", function () {
-      var showing = gatePass.type === "text";
-      gatePass.type = showing ? "password" : "text";
-      gateEye.setAttribute("aria-pressed", showing ? "false" : "true");
-      gateEye.setAttribute("aria-label", showing ? "Show passphrase" : "Hide passphrase");
-      gateEye.textContent = showing ? "☉" : "◎";
-      gatePass.focus();
-    });
-  }
+  // Physical keyboard support while the gate is up (digits / Backspace).
+  document.addEventListener("keydown", function (e) {
+    if (gate.hidden || initialized) return;
+    if (e.key >= "0" && e.key <= "9") { addDigit(e.key); }
+    else if (e.key === "Backspace" || e.key === "Delete") { e.preventDefault(); deleteDigit(); }
+  });
 
   if (lockBtn) {
     lockBtn.addEventListener("click", function () {
@@ -796,10 +861,7 @@
       if (searchInput) searchInput.value = "";
       clearResults();
       pageFrame.hidden = true;
-      gate.hidden = false;
-      gate.classList.remove("gate-dismissed");
-      if (gatePass) { gatePass.value = ""; gatePass.focus(); }
-      gateError.hidden = true;
+      showGate();
     });
   }
 

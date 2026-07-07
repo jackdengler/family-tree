@@ -19,9 +19,9 @@
 
   <a href="#tree-root" class="skip-link">Skip to the family tree</a>
 
-  <!-- ============ Unlock gate ============ -->
+  <!-- ============ Unlock gate (numeric passcode) ============ -->
   <div id="gate" class="gate">
-    <div id="gate-card" class="gate-card">
+    <div id="gate-card" class="gate-card passcode-card">
       <div class="header-fleuron" aria-hidden="true">❦</div>
       <h1 class="font-display gate-title">The Dengler Family Archive</h1>
       <div class="header-rule" aria-hidden="true">
@@ -29,20 +29,32 @@
         <span class="rule-mark">❧</span>
         <span class="rule-line"></span>
       </div>
-      <p class="gate-note">This archive is private to the family.</p>
-      <form id="gate-form" class="gate-form" autocomplete="off">
-        <div class="gate-input-wrap">
-          <label for="gate-pass" class="sr-only">Passphrase</label>
-          <input id="gate-pass" class="gate-pass" type="password" placeholder="Passphrase"
-                 autocomplete="off" autocapitalize="none" spellcheck="false" />
-          <button type="button" id="gate-eye" class="gate-eye" aria-pressed="false" aria-label="Show passphrase">☉</button>
-        </div>
-        <label class="gate-remember" for="gate-remember">
-          <input type="checkbox" id="gate-remember" /> Remember this device
-        </label>
-        <button type="submit" id="gate-unlock" class="gate-unlock">Unlock</button>
-        <p id="gate-error" class="gate-error" role="alert" hidden>That key doesn’t fit — try again.</p>
-      </form>
+      <p class="gate-note">Enter passcode</p>
+
+      <!-- Progress dots (count injected from PASSCODE_LENGTH) -->
+      <div id="passcode-dots" class="passcode-dots" role="status" aria-live="polite" aria-label="Passcode, 0 digits entered"></div>
+
+      <p id="gate-error" class="gate-error" role="alert" aria-live="assertive" hidden>Wrong passcode</p>
+
+      <!-- iOS-style numeric keypad -->
+      <div id="passcode-keypad" class="passcode-keypad" role="group" aria-label="Numeric keypad">
+        <button type="button" class="key" data-digit="1" aria-label="1"><span class="key-digit">1</span></button>
+        <button type="button" class="key" data-digit="2" aria-label="2"><span class="key-digit">2</span><span class="key-letters" aria-hidden="true">ABC</span></button>
+        <button type="button" class="key" data-digit="3" aria-label="3"><span class="key-digit">3</span><span class="key-letters" aria-hidden="true">DEF</span></button>
+        <button type="button" class="key" data-digit="4" aria-label="4"><span class="key-digit">4</span><span class="key-letters" aria-hidden="true">GHI</span></button>
+        <button type="button" class="key" data-digit="5" aria-label="5"><span class="key-digit">5</span><span class="key-letters" aria-hidden="true">JKL</span></button>
+        <button type="button" class="key" data-digit="6" aria-label="6"><span class="key-digit">6</span><span class="key-letters" aria-hidden="true">MNO</span></button>
+        <button type="button" class="key" data-digit="7" aria-label="7"><span class="key-digit">7</span><span class="key-letters" aria-hidden="true">PQRS</span></button>
+        <button type="button" class="key" data-digit="8" aria-label="8"><span class="key-digit">8</span><span class="key-letters" aria-hidden="true">TUV</span></button>
+        <button type="button" class="key" data-digit="9" aria-label="9"><span class="key-digit">9</span><span class="key-letters" aria-hidden="true">WXYZ</span></button>
+        <span class="key key-blank" aria-hidden="true"></span>
+        <button type="button" class="key" data-digit="0" aria-label="0"><span class="key-digit">0</span></button>
+        <button type="button" id="key-delete" class="key key-action" data-action="delete" aria-label="Delete"><span class="key-glyph" aria-hidden="true">⌫</span></button>
+      </div>
+
+      <label class="gate-remember" for="gate-remember">
+        <input type="checkbox" id="gate-remember" /> Remember this device
+      </label>
     </div>
   </div>
 

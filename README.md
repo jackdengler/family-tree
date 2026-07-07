@@ -38,14 +38,20 @@ tools/               Build tooling — Tailwind CLI + encrypt-data.mjs (NOT depl
 
 ## Privacy gate & encryption
 
-On load the site shows a full-screen **unlock gate**. The visitor enters the family
-passphrase; `app.js` derives an AES-256-GCM key via PBKDF2 (SHA-256, 310,000
-iterations) and attempts to decrypt `js/data.enc.js`. A wrong passphrase produces an
-AES-GCM authentication failure, which the app catches and shows as a gentle
-"That key doesn't fit — try again." On success, the gate fades away and the tree
-renders. **Nothing identifying — no names, dates, or places — exists in the page,
-its source, or its network payload before unlock**; `js/data.enc.js` contains only
-base64 ciphertext, salt and IV.
+On load the site shows a full-screen **unlock gate** styled as an iPhone-style
+numeric passcode: a row of progress dots (one per digit — the count derives from
+`PASSCODE_LENGTH` in `js/app.js`, currently 8) above an iOS-style circular keypad
+(1–9, then blank / 0 / delete). Digits can be entered by tapping the keypad or by
+typing on a physical keyboard (number keys enter, Backspace deletes); the typed
+digits are never shown — only the dots fill. When the last digit is entered the
+code **auto-submits**: `app.js` derives an AES-256-GCM key from the digits via
+PBKDF2 (SHA-256, 310,000 iterations) and attempts to decrypt `js/data.enc.js`. A
+wrong code produces an AES-GCM authentication failure, which the app catches by
+shaking the dot row, announcing "Wrong passcode", and clearing the dots. On success
+the gate fades away and the tree renders. **Nothing identifying — no names, dates,
+or places — exists in the page, its source, or its network payload before unlock**;
+`js/data.enc.js` contains only base64 ciphertext, salt and IV. To change the code
+length, adjust `PASSCODE_LENGTH` and re-encrypt the data with a code of that length.
 
 The derived key bytes are cached in `sessionStorage` so a refresh doesn't re-prompt;
 ticking **"Remember this device"** promotes the cache to `localStorage`. The **Lock**

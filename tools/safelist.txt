@@ -3,3 +3,5 @@ scanning is aware of them):
 dark pulse-gold enter entered is-collapsed is-living is-uncertain is-placeholder active
 card-more-children modal-family family-group family-group-label family-group-links
 family-link family-link-name family-link-meta
+passcode-card passcode-dots passcode-dot filled shake passcode-keypad key key-blank
+key-action key-pressed key-digit key-letters key-glyph gate-note gate-remember gate-error
