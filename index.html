@@ -12,8 +12,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
 
   <!-- Precompiled Tailwind, then heirloom detailing on top. All paths relative. -->
-  <link rel="stylesheet" href="css/tailwind.css?v=20260707j" />
-  <link rel="stylesheet" href="css/custom.css?v=20260707j" />
+  <link rel="stylesheet" href="css/tailwind.css?v=20260707k" />
+  <link rel="stylesheet" href="css/custom.css?v=20260707k" />
 </head>
 <body class="bg-paper text-ink font-body antialiased">
 
@@ -88,6 +88,10 @@
           <ul id="search-results" class="search-results" role="listbox" aria-label="Search results" hidden></ul>
         </div>
 
+        <button id="origins-btn" type="button" class="origins-btn" aria-label="Where the family came from">
+          <span class="origins-icon" aria-hidden="true">◔</span> <span class="origins-text">Origins</span>
+        </button>
+
         <button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
           <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
           <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
@@ -127,7 +131,13 @@
     <div id="dialog-body" class="dialog-body"></div>
   </dialog>
 
-  <script src="js/data.enc.js?v=20260707j"></script>
-  <script src="js/app.js?v=20260707j"></script>
+  <!-- ============ Origins panel ============ -->
+  <dialog id="origins-dialog" class="person-dialog origins-dialog" aria-labelledby="origins-body">
+    <button type="button" class="modal-close origins-close" aria-label="Close origins">✕</button>
+    <div id="origins-body" class="dialog-body origins-body"></div>
+  </dialog>
+
+  <script src="js/data.enc.js?v=20260707k"></script>
+  <script src="js/app.js?v=20260707k"></script>
 </body>
 </html>

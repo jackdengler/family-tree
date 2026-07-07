@@ -1067,6 +1067,8 @@
       clearMap();
       if (dialogBody) dialogBody.innerHTML = "";
       if (dialog && dialog.open) dialog.close();
+      if (originsBody) originsBody.innerHTML = "";
+      if (originsDialog && originsDialog.open) originsDialog.close();
       DATA = null; people = {}; sources = {};
       searchIndex = []; nodeCardById = {}; treeNodeIds = {}; childrenIndex = {};
       initialized = false;
@@ -1126,6 +1128,202 @@
     }
     wireSearch();
     initialized = true;
+  }
+
+  /* ===================================================================
+     Origins panel — ancestral breakdown by blood fraction.
+     Computed live from `people`, so it always matches the tree. Each parent
+     contributes half; a line that ends (no parents in the data) keeps its full
+     remaining weight, attributed to the ending ancestor's birth country.
+     =================================================================== */
+  var ORIGIN_META = {
+    "Poland":            { label: "Poland",                                    color: "#c0392b" },
+    "Germany":           { label: "Germany",                                   color: "#c08a2e" },
+    "Ireland":           { label: "Ireland",                                   color: "#3f8054" },
+    "England":           { label: "England (traced to the immigrant)",         color: "#3f6d8c" },
+    "Scotland":          { label: "Scotland",                                  color: "#5b6da8" },
+    "Wales":             { label: "Wales",                                     color: "#4f8a86" },
+    "France":            { label: "France",                                    color: "#8c5a8c" },
+    "Colonial American": { label: "Colonial American (likely English/British)", color: "#8a7857" }
+  };
+  var ORIGIN_FALLBACK = "Colonial American";
+
+  // Map a birthplace string to an origin country. Everything American, or with
+  // no recorded birthplace, falls into the "Colonial American" bucket — old
+  // family stock whose deeper origin isn't yet documented to the boat.
+  function originCountry(place) {
+    if (!place) return ORIGIN_FALLBACK;
+    var s = String(place).toLowerCase();
+    if (/\bengland\b|warwickshire|durham|london|yorkshire|\bkent\b|essex|somerset|devon|suffolk|norfolk|britain|\buk\b|badby|northampton/.test(s)) return "England";
+    if (/ireland|monaghan|carrickmacross|\bcork\b|galway|\bmayo\b|donegal/.test(s)) return "Ireland";
+    if (/poland|galicia|siennów|siennow|przemy/.test(s)) return "Poland";
+    if (/germany|bavaria|bayern|prussia|baden/.test(s)) return "Germany";
+    if (/scotland/.test(s)) return "Scotland";
+    if (/wales/.test(s)) return "Wales";
+    if (/france/.test(s)) return "France";
+    return ORIGIN_FALLBACK; // American place, or unrecognized → colonial bucket
+  }
+
+  // Walk the ancestor graph from the root, attributing each person's blood
+  // fraction. Returns [{ country, fraction, contributors: [{id, weight}] }]
+  // sorted by fraction descending. Fractions sum to 1.
+  function computeOrigins(rootId) {
+    var points = {}; // "id|country" -> { id, country, weight }
+    function add(id, country, w) {
+      var k = id + "|" + country;
+      if (!points[k]) points[k] = { id: id, country: country, weight: 0 };
+      points[k].weight += w;
+    }
+    (function walk(id, w) {
+      var p = people[id];
+      if (!p) return;
+      var parents = (p.parents || []).filter(function (pid) { return people[pid]; });
+      var self = originCountry(p.birth && p.birth.place);
+      if (!parents.length) { add(id, self, w); return; }
+      parents.forEach(function (pid) { walk(pid, w * 0.5); });
+      var missing = 2 - parents.length;          // an unknown parent ends the line here
+      if (missing > 0) add(id, self, w * 0.5 * missing);
+    })(rootId, 1);
+
+    var totals = {};
+    Object.keys(points).forEach(function (k) {
+      var c = points[k];
+      if (!totals[c.country]) totals[c.country] = { country: c.country, fraction: 0, contributors: [] };
+      totals[c.country].fraction += c.weight;
+      totals[c.country].contributors.push({ id: c.id, weight: c.weight });
+    });
+    return Object.keys(totals).map(function (c) {
+      totals[c].contributors.sort(function (a, b) { return b.weight - a.weight; });
+      return totals[c];
+    }).sort(function (a, b) { return b.fraction - a.fraction; });
+  }
+
+  function fmtPct(f) {
+    var v = f * 100;
+    if (v > 0 && v < 0.1) return "<0.1%";
+    return v.toFixed(1) + "%";
+  }
+  function metaFor(country) {
+    return ORIGIN_META[country] || { label: country, color: "#9b9384" };
+  }
+
+  var originsDialog = document.getElementById("origins-dialog");
+  var originsBody = document.getElementById("origins-body");
+  var originsBtn = document.getElementById("origins-btn");
+  var originsLastFocused = null;
+
+  function buildOriginsPanel() {
+    if (!originsBody) return;
+    originsBody.innerHTML = "";
+    var data = computeOrigins(DATA.root);
+
+    var header = el("header", "origins-header");
+    header.appendChild(el("h2", "origins-title font-display", "Where the Family Came From"));
+    header.appendChild(el("p", "origins-lede",
+      "Every ancestor’s share of your blood: each parent is half, each grandparent a quarter, and so on back through the tree."));
+    originsBody.appendChild(header);
+
+    // Stacked proportion bar.
+    var bar = el("div", "origins-bar");
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", data.map(function (d) {
+      return metaFor(d.country).label + " " + fmtPct(d.fraction);
+    }).join(", "));
+    data.forEach(function (d) {
+      var seg = el("span", "origins-seg");
+      seg.style.width = (d.fraction * 100) + "%";
+      seg.style.background = metaFor(d.country).color;
+      seg.title = metaFor(d.country).label + " — " + fmtPct(d.fraction);
+      bar.appendChild(seg);
+    });
+    originsBody.appendChild(bar);
+
+    // Legend rows; each expands to the ancestors who make it up.
+    var list = el("ul", "origins-legend");
+    data.forEach(function (d) {
+      var meta = metaFor(d.country);
+      var li = el("li", "origins-row");
+
+      var head = el("button", "origins-row-head");
+      head.type = "button";
+      head.setAttribute("aria-expanded", "false");
+      var sw = el("span", "origins-swatch");
+      sw.style.background = meta.color;
+      sw.setAttribute("aria-hidden", "true");
+      head.appendChild(sw);
+      head.appendChild(el("span", "origins-row-label", meta.label));
+      head.appendChild(el("span", "origins-row-pct", fmtPct(d.fraction)));
+      var caret = el("span", "origins-caret", "▸");
+      caret.setAttribute("aria-hidden", "true");
+      head.appendChild(caret);
+
+      var detail = el("div", "origins-row-detail");
+      detail.hidden = true;
+      d.contributors.forEach(function (c) {
+        var p = people[c.id];
+        if (!p) return;
+        var row = el("button", "origins-contrib");
+        row.type = "button";
+        row.appendChild(el("span", "origins-contrib-name", fullName(p)));
+        var place = (p.birth && p.birth.place) ? p.birth.place : "birthplace unrecorded";
+        row.appendChild(el("span", "origins-contrib-meta", fmtPct(c.weight) + " · " + place));
+        row.addEventListener("click", function () {
+          if (originsDialog.open) originsDialog.close();
+          openModal(c.id, originsBtn);
+        });
+        detail.appendChild(row);
+      });
+
+      head.addEventListener("click", function () {
+        var open = head.getAttribute("aria-expanded") === "true";
+        head.setAttribute("aria-expanded", open ? "false" : "true");
+        detail.hidden = open;
+        caret.classList.toggle("open", !open);
+      });
+
+      li.appendChild(head);
+      li.appendChild(detail);
+      list.appendChild(li);
+    });
+    originsBody.appendChild(list);
+
+    // Honest footnote: what the numbers do and don't claim.
+    var traced = data.reduce(function (s, d) {
+      return s + (d.country === ORIGIN_FALLBACK ? 0 : d.fraction);
+    }, 0);
+    var note = el("section", "origins-note");
+    note.appendChild(el("p", null,
+      "Traced to a specific origin country: " + fmtPct(traced) + ". The rest is old " +
+      "American family stock whose deeper origin isn’t yet documented — by surname, " +
+      "place and church it is very likely English/British colonial, with some German."));
+    note.appendChild(el("p", null,
+      "Why England reads so low: the colonial English lines (Griswold, Royce, Rice, " +
+      "Massure) trace back 7–10 generations, and you inherit only a sliver of your " +
+      "blood from any one ancestor that distant — so those proven threads count for " +
+      "little by fraction, even though the American stock around them shares their origin."));
+    originsBody.appendChild(note);
+  }
+
+  function openOrigins() {
+    if (!originsDialog || !DATA) return;
+    originsLastFocused = document.activeElement;
+    buildOriginsPanel();
+    if (typeof originsDialog.showModal === "function") originsDialog.showModal();
+    else originsDialog.setAttribute("open", "");
+    var close = originsDialog.querySelector(".origins-close");
+    if (close) close.focus();
+    originsBody.scrollTop = 0;
+  }
+  function closeOrigins() { if (originsDialog && originsDialog.open) originsDialog.close(); }
+
+  if (originsBtn) originsBtn.addEventListener("click", openOrigins);
+  if (originsDialog) {
+    var oClose = originsDialog.querySelector(".origins-close");
+    if (oClose) oClose.addEventListener("click", closeOrigins);
+    originsDialog.addEventListener("click", function (e) { if (e.target === originsDialog) closeOrigins(); });
+    originsDialog.addEventListener("close", function () {
+      if (originsLastFocused && typeof originsLastFocused.focus === "function") originsLastFocused.focus();
+    });
   }
 
   /* ===================================================================

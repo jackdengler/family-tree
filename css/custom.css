@@ -1025,10 +1025,126 @@ html.dark .gate-error { color: #e0876b; }
   .app-subtitle { display: none; }
   .app-bar .controls { flex: 1 1 100%; order: 3; justify-content: stretch; }
   .app-bar .search-wrap { flex: 1 1 auto; max-width: none; }
-  .lock-text { display: none; }              /* icon-only lock on phones */
+  .lock-text, .origins-text { display: none; }   /* icon-only pills on phones */
   .lock-btn { width: 2.4rem; justify-content: center; padding: 0; }
+  .origins-btn { width: 2.4rem; justify-content: center; padding: 0; }
   .map-caption { max-width: 68%; font-size: 0.66rem; }
   .map-btn { width: 3rem; height: 3rem; }    /* keep thumb-friendly */
+}
+
+/* ---------- Origins button + panel ---------- */
+.origins-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 2.4rem;
+  padding: 0.4rem 0.75rem;
+  background: var(--surface);
+  border: var(--hairline);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.origins-btn:hover { color: var(--gold); border-color: var(--gold); }
+.origins-icon { font-size: 0.95rem; color: var(--gold); }
+
+.origins-body { padding: 2rem 1.9rem 1.9rem; }
+.origins-header { border-bottom: var(--hairline); padding-bottom: 0.9rem; margin-bottom: 1.2rem; }
+.origins-title {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
+  font-weight: 600; line-height: 1.05; margin: 0; color: var(--ink);
+}
+.origins-lede { margin: 0.5rem 0 0; color: var(--muted); line-height: 1.55; }
+
+.origins-bar {
+  display: flex;
+  width: 100%;
+  height: 1.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  border: var(--hairline);
+  box-shadow: inset 0 1px 2px rgba(43, 33, 24, 0.12);
+  margin-bottom: 1.4rem;
+}
+.origins-seg { min-width: 2px; height: 100%; }
+.origins-seg + .origins-seg { border-left: 1px solid rgba(251, 246, 234, 0.35); }
+html.dark .origins-seg + .origins-seg { border-left-color: rgba(0, 0, 0, 0.3); }
+
+.origins-legend { list-style: none; margin: 0 0 1.3rem; padding: 0; }
+.origins-row { border-bottom: var(--hairline); }
+.origins-row:last-child { border-bottom: none; }
+.origins-row-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 0.15rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--ink);
+  text-align: left;
+}
+.origins-row-head:hover { color: var(--gold); }
+.origins-swatch {
+  flex: 0 0 auto;
+  width: 0.95rem; height: 0.95rem;
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(43, 33, 24, 0.15);
+}
+.origins-row-label { flex: 1 1 auto; font-size: 0.98rem; line-height: 1.3; }
+.origins-row-pct {
+  flex: 0 0 auto;
+  font-variant-numeric: oldstyle-nums tabular-nums;
+  font-weight: 600; color: var(--ink); font-size: 1rem;
+}
+.origins-caret {
+  flex: 0 0 auto; color: var(--gold-soft); font-size: 0.8rem;
+  transition: transform 0.2s var(--ease);
+}
+.origins-caret.open { transform: rotate(90deg); }
+
+.origins-row-detail { padding: 0.1rem 0 0.7rem 1.65rem; }
+.origins-contrib {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.2rem;
+  background: color-mix(in srgb, var(--surface) 90%, var(--gold) 10%);
+  border: var(--hairline);
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  transition: border-color 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.origins-contrib:hover { border-color: var(--gold); transform: translateX(2px); }
+.origins-contrib-name { color: var(--ink); font-weight: 600; font-size: 0.92rem; }
+.origins-contrib-meta { color: var(--muted); font-size: 0.8rem; font-variant-numeric: oldstyle-nums; }
+
+.origins-note {
+  border-top: var(--hairline);
+  padding-top: 1rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+.origins-note p { margin: 0 0 0.7rem; }
+.origins-note p:last-child { margin-bottom: 0; }
+
+@media (max-width: 480px) {
+  .origins-body { padding: 1.6rem 1.2rem 1.4rem; }
+  .origins-row-detail { padding-left: 1.2rem; }
 }
 
 /* ---------- Reduced motion ---------- */
