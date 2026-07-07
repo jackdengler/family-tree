@@ -872,7 +872,163 @@ html.dark .gate-error { color: #e0876b; }
   .passcode-keypad { grid-template-columns: repeat(3, 4.25rem); gap: 0.65rem; }
   .key { width: 4.25rem; height: 4.25rem; }   /* 68px — comfortably >=44px, fits 360 */
   .key-digit { font-size: 1.55rem; }
-  .lock-btn { top: 0.7rem; right: 0.6rem; padding: 0.4rem 0.7rem; }
+}
+
+/* =====================================================================
+   Spatial family-tree MAP (pan / zoom) — app shell + canvas + controls.
+   Rules here come after the base .page-frame / .controls / .lock-btn so
+   these full-screen overrides win.
+   ===================================================================== */
+.page-frame {
+  position: fixed;
+  inset: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ----- Compact app bar ----- */
+.app-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem clamp(0.75rem, 2.5vw, 1.6rem);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(6px);
+  z-index: 6;
+}
+.app-brand { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.app-fleuron { color: var(--gold); font-size: 1.35rem; line-height: 1; }
+.app-titles { display: flex; flex-direction: column; line-height: 1.06; min-width: 0; }
+.app-title { font-size: clamp(1.15rem, 2.6vw, 1.7rem); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.app-subtitle {
+  font-size: 0.72rem; font-style: italic; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.app-bar .controls {
+  margin: 0; max-width: none; flex: 0 1 auto;
+  justify-content: flex-end; gap: 0.5rem; flex-wrap: nowrap;
+}
+.app-bar .search-wrap { flex: 0 1 16rem; max-width: 16rem; }
+
+/* Lock button becomes a normal pill inside the bar (no longer absolute). */
+.lock-btn {
+  position: static;
+  flex: 0 0 auto;
+  top: auto; right: auto;
+  height: 2.4rem;
+}
+
+/* ----- Map viewport / canvas ----- */
+.map-viewport {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: none;            /* we own all gestures */
+  cursor: grab;
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(168, 117, 47, 0.05), transparent 42%),
+    radial-gradient(circle at 82% 12%, rgba(168, 117, 47, 0.04), transparent 40%),
+    radial-gradient(circle at 62% 78%, rgba(92, 79, 63, 0.05), transparent 46%),
+    repeating-linear-gradient(0deg, rgba(43, 33, 24, 0.012) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(43, 33, 24, 0.012) 0 1px, transparent 1px 3px);
+}
+.map-viewport:active { cursor: grabbing; }
+.map-viewport:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; }
+
+.map-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.map-canvas.map-enter { animation: mapFade 0.6s var(--ease); }
+@keyframes mapFade { from { opacity: 0; } to { opacity: 1; } }
+
+.map-lines { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.map-lines .conn { fill: none; stroke: var(--border); stroke-width: 1.6; stroke-linecap: round; }
+.map-lines .spouse { fill: none; stroke: var(--gold-soft); stroke-width: 1.6; stroke-linecap: round; opacity: 0.85; }
+
+/* Cards positioned absolutely in canvas space; JS sets left/top/width. */
+.map-canvas .person-card {
+  position: absolute;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: none;
+}
+.map-endcap {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  color: var(--muted);
+  opacity: 0.72;
+  pointer-events: none;
+  text-align: center;
+}
+.map-endcap .endcap-fleuron { color: var(--gold-soft); font-size: 1rem; line-height: 1; }
+.map-endcap .endcap-text { font-style: italic; font-size: 0.72rem; }
+
+/* ----- On-screen map controls ----- */
+.map-controls {
+  position: absolute;
+  right: clamp(0.75rem, 2vw, 1.25rem);
+  bottom: clamp(0.75rem, 2vw, 1.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 7;
+}
+.map-btn {
+  width: 2.9rem; height: 2.9rem;   /* ~46px, >=44px tap target */
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--gold);
+  font-size: 1.5rem; line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s var(--ease), transform 0.15s var(--ease), background 0.2s var(--ease);
+}
+.map-btn:hover { border-color: var(--gold); background: rgba(168, 117, 47, 0.08); }
+.map-btn:active { transform: scale(0.94); }
+.map-btn-recenter { font-size: 1.25rem; }
+
+.map-caption {
+  position: absolute;
+  left: clamp(0.75rem, 2vw, 1.25rem);
+  bottom: clamp(0.75rem, 2vw, 1.25rem);
+  max-width: min(60%, 30rem);
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--muted);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ----- Map on small screens ----- */
+@media (max-width: 720px) {
+  .app-bar { flex-wrap: wrap; gap: 0.5rem 0.75rem; padding: 0.5rem 0.75rem; }
+  .app-brand { flex: 1 1 auto; }
+  .app-subtitle { display: none; }
+  .app-bar .controls { flex: 1 1 100%; order: 3; justify-content: stretch; }
+  .app-bar .search-wrap { flex: 1 1 auto; max-width: none; }
+  .lock-text { display: none; }              /* icon-only lock on phones */
+  .lock-btn { width: 2.4rem; justify-content: center; padding: 0; }
+  .map-caption { max-width: 68%; font-size: 0.66rem; }
+  .map-btn { width: 3rem; height: 3rem; }    /* keep thumb-friendly */
 }
 
 /* ---------- Reduced motion ---------- */

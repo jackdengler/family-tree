@@ -12,8 +12,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
 
   <!-- Precompiled Tailwind, then heirloom detailing on top. All paths relative. -->
-  <link rel="stylesheet" href="css/tailwind.css?v=20260707b" />
-  <link rel="stylesheet" href="css/custom.css?v=20260707b" />
+  <link rel="stylesheet" href="css/tailwind.css?v=20260707c" />
+  <link rel="stylesheet" href="css/custom.css?v=20260707c" />
 </head>
 <body class="bg-paper text-ink font-body antialiased">
 
@@ -59,63 +59,66 @@
   </div>
 
   <div class="page-frame" hidden>
-    <button id="lock-btn" type="button" class="lock-btn" aria-label="Lock the archive">
-      <span class="lock-icon" aria-hidden="true">⚿</span> Lock
-    </button>
-
-    <!-- ============ Ornamental header ============ -->
-    <header class="site-header text-center">
-      <div class="header-fleuron" aria-hidden="true">❦</div>
-      <h1 id="tree-title" class="font-display site-title">The Dengler Family</h1>
-      <div class="header-rule" aria-hidden="true">
-        <span class="rule-line"></span>
-        <span class="rule-mark">❧</span>
-        <span class="rule-line"></span>
+    <!-- ============ Compact app bar ============ -->
+    <header class="app-bar">
+      <div class="app-brand">
+        <span class="app-fleuron" aria-hidden="true">❦</span>
+        <span class="app-titles">
+          <span id="tree-title" class="app-title font-display">The Dengler Family</span>
+          <span id="tree-subtitle" class="app-subtitle">An American Family History</span>
+        </span>
       </div>
-      <p id="tree-subtitle" class="site-subtitle font-display">An American Family History</p>
+
+      <div class="controls">
+        <div class="search-wrap">
+          <label for="search-input" class="sr-only">Search for a family member</label>
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input
+            id="search-input"
+            type="text"
+            class="search-input"
+            placeholder="Search a name…"
+            autocomplete="off"
+            role="combobox"
+            aria-expanded="false"
+            aria-controls="search-results"
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
+          />
+          <ul id="search-results" class="search-results" role="listbox" aria-label="Search results" hidden></ul>
+        </div>
+
+        <button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
+          <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
+          <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
+        </button>
+
+        <button id="lock-btn" type="button" class="lock-btn" aria-label="Lock the archive">
+          <span class="lock-icon" aria-hidden="true">⚿</span> <span class="lock-text">Lock</span>
+        </button>
+      </div>
     </header>
 
-    <!-- ============ Controls ============ -->
-    <div class="controls">
-      <div class="search-wrap">
-        <label for="search-input" class="sr-only">Search for a family member</label>
-        <span class="search-icon" aria-hidden="true">⌕</span>
-        <input
-          id="search-input"
-          type="text"
-          class="search-input"
-          placeholder="Search a name…"
-          autocomplete="off"
-          role="combobox"
-          aria-expanded="false"
-          aria-controls="search-results"
-          aria-autocomplete="list"
-          aria-haspopup="listbox"
-        />
-        <ul id="search-results" class="search-results" role="listbox" aria-label="Search results" hidden></ul>
+    <!-- ============ Pan/zoom family-tree map ============ -->
+    <main
+      id="map-viewport"
+      class="map-viewport"
+      tabindex="0"
+      aria-label="Family tree map. Drag to pan; scroll or pinch to zoom; use the buttons to zoom and recenter; arrow keys pan and plus or minus zoom."
+    >
+      <div id="map-canvas" class="map-canvas">
+        <svg id="map-lines" class="map-lines" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"></svg>
+        <!-- person cards + endcaps injected here by app.js -->
       </div>
 
-      <button id="theme-toggle" type="button" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark theme">
-        <span class="theme-icon theme-icon-sun" aria-hidden="true">☀</span>
-        <span class="theme-icon theme-icon-moon" aria-hidden="true">☾</span>
-      </button>
-    </div>
+      <div class="map-controls" role="group" aria-label="Map zoom controls">
+        <button id="zoom-in" type="button" class="map-btn" aria-label="Zoom in">+</button>
+        <button id="zoom-out" type="button" class="map-btn" aria-label="Zoom out">−</button>
+        <button id="recenter" type="button" class="map-btn map-btn-recenter" aria-label="Recenter the tree">⤢</button>
+      </div>
 
-    <!-- ============ Tree ============ -->
-    <main class="tree-viewport" aria-label="Ancestor tree">
-      <div id="tree-root" class="tree-root"></div>
+      <p id="footer-disclaimer" class="map-caption">Compiled from free public records; see sources on each person. A private family archive.</p>
     </main>
-
-    <!-- ============ Footer ============ -->
-    <footer class="site-footer text-center">
-      <div class="footer-rule" aria-hidden="true">
-        <span class="rule-line"></span>
-        <span class="rule-mark">❦</span>
-        <span class="rule-line"></span>
-      </div>
-      <p id="footer-disclaimer" class="footer-disclaimer">Compiled from free public records; see sources on each person.</p>
-      <p class="footer-note">A private family archive — for the Dengler family.</p>
-    </footer>
   </div>
 
   <!-- ============ Person modal ============ -->
@@ -124,7 +127,7 @@
     <div id="dialog-body" class="dialog-body"></div>
   </dialog>
 
-  <script src="js/data.enc.js?v=20260707b"></script>
-  <script src="js/app.js?v=20260707b"></script>
+  <script src="js/data.enc.js?v=20260707c"></script>
+  <script src="js/app.js?v=20260707c"></script>
 </body>
 </html>

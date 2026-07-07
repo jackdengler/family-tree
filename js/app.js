@@ -145,26 +145,6 @@
     return sibs;
   }
 
-  function makeSpouseChip(spouseRef) {
-    var sp = people[spouseRef.personId];
-    if (!sp) return null;
-    // Skip spouses who are themselves blood-ancestor tree nodes (co-parents):
-    // they already appear as their own column, so a chip would be redundant.
-    if (treeNodeIds[sp.id]) return null;
-
-    var chip = el("button", "spouse-chip");
-    chip.type = "button";
-    chip.setAttribute("aria-label", "Spouse: " + fullName(sp) + ". Open details.");
-    chip.appendChild(el("span", "chip-ring", "⚭"));
-    chip.appendChild(el("span", "chip-name", displayName(sp)));
-    chip.addEventListener("click", function (e) {
-      e.stopPropagation();
-      openModal(sp.id, chip);
-    });
-    searchIndex.push({ id: sp.id, terms: searchTerms(sp), type: "spouse", chip: chip });
-    return chip;
-  }
-
   function makePersonCard(p) {
     var card = el("button", "person-card");
     card.type = "button";
@@ -212,73 +192,318 @@
     return card;
   }
 
-  function buildNode(personId, ancestorToggles) {
-    var p = people[personId];
-    if (!p) return null;
+  /* -------------------------------------------------------------------
+     Spatial layout: tidy ancestor chart on a 2D canvas.
+     y = generation (root at the bottom); x by recursive leaf-packing so
+     nothing overlaps and a couple sits centered over their shared child.
+     ------------------------------------------------------------------- */
+  var CARD_W = 200;      // fixed card width on the map (px, canvas space)
+  var ROW_STEP = 215;    // vertical distance between generation centers
+  var X_STEP = 250;      // horizontal spacing between packed leaves
+  var ENDCAP_H = 40;     // reserved space above a line's end
 
-    var node = el("div", "tree-node");
-    var parents = (p.parents || []).filter(function (id) { return people[id]; });
-    var toggleBtn = null;
+  var mapViewport = document.getElementById("map-viewport");
+  var mapCanvas = document.getElementById("map-canvas");
+  var mapLines = document.getElementById("map-lines");
+  var mapNodes = {};                 // id -> { id, gen, parents, x, y, h, sx, sy, card }
+  var mapBounds = { w: 0, h: 0 };
+  var rootCanvasPoint = { x: 0, y: 0 };
 
-    if (parents.length > 0) {
-      var ancestorsId = "anc-" + (++uid);
-      var collapser = el("div", "tree-ancestors-collapser");
-      collapser.id = ancestorsId;
-      var ancestorsRow = el("div", "tree-ancestors");
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
 
-      toggleBtn = el("button", "branch-toggle");
-      toggleBtn.type = "button";
-      toggleBtn.setAttribute("aria-expanded", "true");
-      toggleBtn.setAttribute("aria-controls", ancestorsId);
-      toggleBtn.setAttribute("aria-label", "Collapse ancestors of " + fullName(p));
-      toggleBtn.innerHTML = '<span class="chev" aria-hidden="true"></span>';
+  function clearMap() {
+    if (!mapCanvas) return;
+    Array.prototype.slice.call(mapCanvas.querySelectorAll(".person-card, .map-endcap"))
+      .forEach(function (n) { n.remove(); });
+    if (mapLines) mapLines.innerHTML = "";
+    mapNodes = {};
+  }
 
-      var childToggles = ancestorToggles.concat([toggleBtn]);
-      parents.forEach(function (pid) {
-        var childNode = buildNode(pid, childToggles);
-        if (childNode) ancestorsRow.appendChild(childNode);
+  function buildMap(rootId) {
+    clearMap();
+    var maxGen = 0;
+
+    // 1. Collect the direct-ancestor set with generation numbers.
+    (function collect(id, gen) {
+      var p = people[id];
+      if (!p || mapNodes[id]) return;
+      if (gen > maxGen) maxGen = gen;
+      var parents = (p.parents || []).filter(function (pid) { return people[pid]; });
+      mapNodes[id] = { id: id, gen: gen, parents: parents, x: 0, y: 0, h: 0, card: null };
+      parents.forEach(function (pid) { collect(pid, gen + 1); });
+    })(rootId, 0);
+
+    // 2. Assign x by leaf-packing (post-order over parents), y by generation.
+    var leaf = 0;
+    (function assignX(id) {
+      var n = mapNodes[id];
+      if (!n.parents.length) { n.x = leaf * X_STEP; leaf++; }
+      else {
+        var sum = 0;
+        n.parents.forEach(function (pid) { assignX(pid); sum += mapNodes[pid].x; });
+        n.x = sum / n.parents.length;
+      }
+      n.y = (maxGen - n.gen) * ROW_STEP;   // root (gen 0) sits at the bottom
+    })(rootId);
+
+    // 3. Create cards and measure their heights (needs a laid-out page-frame).
+    Object.keys(mapNodes).forEach(function (id) {
+      var n = mapNodes[id];
+      var card = makePersonCard(people[id]);
+      card.classList.add("map-card");
+      card.style.width = CARD_W + "px";
+      card.style.left = "-9999px";
+      card.style.top = "0px";
+      mapCanvas.appendChild(card);
+      n.card = card;
+      n.h = card.offsetHeight || 120;
+      searchIndex.push({ id: id, terms: searchTerms(people[id]), type: "node", card: card });
+    });
+
+    // 4. Compute bounds (including card size + endcap space) and a shift so all
+    //    coordinates are positive with padding.
+    var minL = Infinity, maxR = -Infinity, minT = Infinity, maxB = -Infinity;
+    Object.keys(mapNodes).forEach(function (id) {
+      var n = mapNodes[id];
+      minL = Math.min(minL, n.x - CARD_W / 2);
+      maxR = Math.max(maxR, n.x + CARD_W / 2);
+      minT = Math.min(minT, n.y - n.h / 2 - (n.parents.length ? 0 : ENDCAP_H));
+      maxB = Math.max(maxB, n.y + n.h / 2);
+    });
+    var PAD = 150;
+    var ox = -minL + PAD, oy = -minT + PAD;
+    mapBounds.w = (maxR - minL) + PAD * 2;
+    mapBounds.h = (maxB - minT) + PAD * 2;
+
+    // 5. Position cards + endcaps in shifted canvas coordinates.
+    Object.keys(mapNodes).forEach(function (id) {
+      var n = mapNodes[id];
+      n.sx = n.x + ox; n.sy = n.y + oy;
+      n.card.style.left = (n.sx - CARD_W / 2) + "px";
+      n.card.style.top = (n.sy - n.h / 2) + "px";
+      if (!n.parents.length) {
+        var cap = el("div", "map-endcap");
+        cap.innerHTML = '<span class="endcap-fleuron" aria-hidden="true">❧</span>' +
+          '<span class="endcap-text">line continues beyond records…</span>';
+        cap.style.left = (n.sx - CARD_W / 2) + "px";
+        cap.style.top = (n.sy - n.h / 2 - ENDCAP_H) + "px";
+        cap.style.width = CARD_W + "px";
+        mapCanvas.appendChild(cap);
+      }
+    });
+
+    // 6. Connector geometry: parent stubs + couple bus + drop to the child.
+    var conn = "", spouse = "";
+    Object.keys(mapNodes).forEach(function (id) {
+      var c = mapNodes[id];
+      if (!c.parents.length) return;
+      var childTop = c.sy - c.h / 2;
+      var parentGenY = mapNodes[c.parents[0]].sy;
+      var busY = (parentGenY + c.sy) / 2;
+      var xs = [];
+      c.parents.forEach(function (pid) {
+        var pn = mapNodes[pid];
+        xs.push(pn.sx);
+        conn += "M" + pn.sx + " " + (pn.sy + pn.h / 2) + "L" + pn.sx + " " + busY;
       });
-      collapser.appendChild(ancestorsRow);
+      if (xs.length > 1) {
+        spouse += "M" + Math.min.apply(null, xs) + " " + busY + "L" + Math.max.apply(null, xs) + " " + busY;
+      }
+      conn += "M" + c.sx + " " + busY + "L" + c.sx + " " + childTop;
+    });
 
-      toggleBtn.addEventListener("click", function () {
-        var expanded = toggleBtn.getAttribute("aria-expanded") === "true";
-        setExpanded(toggleBtn, collapser, !expanded, p);
-      });
+    mapLines.setAttribute("width", mapBounds.w);
+    mapLines.setAttribute("height", mapBounds.h);
+    mapLines.setAttribute("viewBox", "0 0 " + mapBounds.w + " " + mapBounds.h);
+    mapLines.appendChild(svgEl("path", { d: conn, "class": "conn" }));
+    if (spouse) mapLines.appendChild(svgEl("path", { d: spouse, "class": "spouse" }));
 
-      node.appendChild(collapser);
-      node.appendChild(toggleBtn);
+    mapCanvas.style.width = mapBounds.w + "px";
+    mapCanvas.style.height = mapBounds.h + "px";
+
+    var rn = mapNodes[rootId];
+    if (rn) rootCanvasPoint = { x: rn.sx, y: rn.sy };
+  }
+
+  /* -------------------------------------------------------------------
+     Pan / zoom engine — transform-only, Pointer Events, wheel + pinch.
+     ------------------------------------------------------------------- */
+  var MIN_SCALE = 0.3, MAX_SCALE = 2.5;
+  var view = { tx: 0, ty: 0, scale: 1 };
+  var pointers = new Map();
+  var panLast = null, pinch = null, gestureMoved = 0, suppressClick = false, lastTap = null;
+
+  function clampNum(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function vw() { return mapViewport ? mapViewport.clientWidth : 0; }
+  function vh() { return mapViewport ? mapViewport.clientHeight : 0; }
+
+  function clampView() {
+    var s = view.scale;
+    view.tx = clampNum(view.tx, vw() * 0.5 - mapBounds.w * s, vw() * 0.5);
+    view.ty = clampNum(view.ty, vh() * 0.5 - mapBounds.h * s, vh() * 0.5);
+  }
+  function applyView(animate) {
+    if (!mapCanvas) return;
+    if (animate && !prefersReducedMotion()) {
+      mapCanvas.style.transition = "transform 0.5s var(--ease)";
+      window.clearTimeout(applyView._t);
+      applyView._t = window.setTimeout(function () { mapCanvas.style.transition = ""; }, 540);
     } else {
-      var endcap = el("div", "tree-endcap");
-      endcap.innerHTML = '<span class="endcap-fleuron" aria-hidden="true">❧</span>' +
-        '<span class="endcap-text">line continues beyond records…</span>';
-      node.appendChild(endcap);
+      mapCanvas.style.transition = "";
     }
-
-    var cardWrap = el("div", "tree-card-wrap");
-    var cardChips = el("div", "card-and-chips");
-    cardChips.appendChild(makePersonCard(p));
-    (p.spouses || []).forEach(function (sp) {
-      var chip = makeSpouseChip(sp);
-      if (chip) cardChips.appendChild(chip);
-    });
-    cardWrap.appendChild(cardChips);
-    node.appendChild(cardWrap);
-
-    searchIndex.push({
-      id: p.id, terms: searchTerms(p), type: "node",
-      card: nodeCardById[p.id], toggles: ancestorToggles.slice()
-    });
-    return node;
+    mapCanvas.style.transform = "translate(" + view.tx + "px," + view.ty + "px) scale(" + view.scale + ")";
+  }
+  function zoomAbout(clientX, clientY, newScale) {
+    var r = mapViewport.getBoundingClientRect();
+    newScale = clampNum(newScale, MIN_SCALE, MAX_SCALE);
+    var cx = (clientX - r.left - view.tx) / view.scale;
+    var cy = (clientY - r.top - view.ty) / view.scale;
+    view.scale = newScale;
+    view.tx = (clientX - r.left) - cx * newScale;
+    view.ty = (clientY - r.top) - cy * newScale;
+    clampView(); applyView();
+  }
+  function zoomByFactor(f) {
+    var r = mapViewport.getBoundingClientRect();
+    zoomAbout(r.left + vw() / 2, r.top + vh() / 2, view.scale * f);
+  }
+  function centerOnCanvas(cx, cy, scale, anchorY, animate) {
+    view.scale = clampNum(scale, MIN_SCALE, MAX_SCALE);
+    view.tx = vw() / 2 - cx * view.scale;
+    view.ty = vh() * (anchorY == null ? 0.5 : anchorY) - cy * view.scale;
+    clampView(); applyView(animate);
+  }
+  function centerOnNode(id, animate) {
+    var n = mapNodes[id];
+    if (!n) return;
+    centerOnCanvas(n.sx, n.sy, clampNum(Math.max(view.scale, 1), MIN_SCALE, MAX_SCALE), 0.5, animate);
+  }
+  function recenter(animate) {
+    var margin = 70;
+    var s = clampNum(Math.min((vw() - margin * 2) / mapBounds.w, (vh() - margin * 2) / mapBounds.h), MIN_SCALE, MAX_SCALE);
+    centerOnCanvas(mapBounds.w / 2, mapBounds.h / 2, s, 0.5, animate);
+  }
+  function initialView() {
+    // Readable scale, root horizontally centered near the bottom of the view.
+    var s = clampNum(Math.min((vw() - 80) / mapBounds.w, 0.95), 0.5, 0.95);
+    centerOnCanvas(rootCanvasPoint.x, rootCanvasPoint.y, s, 0.72, false);
   }
 
-  function setExpanded(toggleBtn, collapser, expand, p) {
-    toggleBtn.setAttribute("aria-expanded", expand ? "true" : "false");
-    toggleBtn.setAttribute("aria-label",
-      (expand ? "Collapse" : "Expand") + " ancestors of " + fullName(p));
-    collapser.classList.toggle("is-collapsed", !expand);
+  function midpoint(pts) { return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }; }
+  function screenToCanvas(clientX, clientY) {
+    var r = mapViewport.getBoundingClientRect();
+    return { x: (clientX - r.left - view.tx) / view.scale, y: (clientY - r.top - view.ty) / view.scale };
   }
-  function expandToggle(toggleBtn) {
-    if (toggleBtn && toggleBtn.getAttribute("aria-expanded") !== "true") toggleBtn.click();
+
+  function wireMapGestures() {
+    if (!mapViewport || wireMapGestures._done) return;
+    wireMapGestures._done = true;
+
+    mapViewport.addEventListener("pointerdown", function (e) {
+      suppressClick = false;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      gestureMoved = 0;
+      if (pointers.size === 1) { panLast = { x: e.clientX, y: e.clientY }; pinch = null; }
+      else if (pointers.size === 2) {
+        var pts = Array.from(pointers.values());
+        pinch = {
+          startDist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1,
+          startScale: view.scale,
+          anchor: screenToCanvas(midpoint(pts).x, midpoint(pts).y)
+        };
+        panLast = null;
+      }
+    });
+
+    mapViewport.addEventListener("pointermove", function (e) {
+      if (!pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pointers.size >= 2 && pinch) {
+        var pts = Array.from(pointers.values());
+        var dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+        var mid = midpoint(pts);
+        var r = mapViewport.getBoundingClientRect();
+        view.scale = clampNum(pinch.startScale * (dist / pinch.startDist), MIN_SCALE, MAX_SCALE);
+        view.tx = (mid.x - r.left) - pinch.anchor.x * view.scale;
+        view.ty = (mid.y - r.top) - pinch.anchor.y * view.scale;
+        gestureMoved += 12;
+        clampView(); applyView();
+      } else if (panLast) {
+        var dx = e.clientX - panLast.x, dy = e.clientY - panLast.y;
+        gestureMoved += Math.abs(dx) + Math.abs(dy);
+        // Capture only once a real drag begins, so a tap still clicks the card.
+        if (gestureMoved > 8) { try { mapViewport.setPointerCapture(e.pointerId); } catch (_) {} }
+        view.tx += dx; view.ty += dy;
+        panLast = { x: e.clientX, y: e.clientY };
+        clampView(); applyView();
+      }
+    });
+
+    function endPointer(e) {
+      if (gestureMoved > 8) suppressClick = true;
+      var wasTouch = e.pointerType && e.pointerType !== "mouse";
+      pointers.delete(e.pointerId);
+      try { mapViewport.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (pointers.size === 1) {
+        var p = Array.from(pointers.values())[0];
+        panLast = { x: p.x, y: p.y }; pinch = null;
+      } else if (pointers.size === 0) {
+        panLast = null; pinch = null;
+        // double-tap to zoom (touch only; mouse uses dblclick)
+        if (wasTouch && gestureMoved <= 8) {
+          var now = Date.now();
+          if (lastTap && now - lastTap.t < 300 && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) < 30) {
+            zoomAbout(e.clientX, e.clientY, view.scale * 1.6); lastTap = null;
+          } else { lastTap = { t: now, x: e.clientX, y: e.clientY }; }
+        }
+      }
+    }
+    mapViewport.addEventListener("pointerup", endPointer);
+    mapViewport.addEventListener("pointercancel", endPointer);
+
+    // Swallow the click that ends a drag so it doesn't open a modal.
+    mapViewport.addEventListener("click", function (e) {
+      if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+    }, true);
+
+    mapViewport.addEventListener("wheel", function (e) {
+      e.preventDefault();
+      zoomAbout(e.clientX, e.clientY, view.scale * Math.exp(-e.deltaY * 0.0015));
+    }, { passive: false });
+
+    mapViewport.addEventListener("dblclick", function (e) {
+      if (e.target.closest(".person-card")) return; // let card open its modal
+      zoomAbout(e.clientX, e.clientY, view.scale * 1.6);
+    });
+
+    mapViewport.addEventListener("keydown", function (e) {
+      var step = 70;
+      switch (e.key) {
+        case "ArrowLeft": view.tx += step; break;
+        case "ArrowRight": view.tx -= step; break;
+        case "ArrowUp": view.ty += step; break;
+        case "ArrowDown": view.ty -= step; break;
+        case "+": case "=": zoomByFactor(1.2); e.preventDefault(); return;
+        case "-": case "_": zoomByFactor(1 / 1.2); e.preventDefault(); return;
+        default: return;
+      }
+      clampView(); applyView(); e.preventDefault();
+    });
+
+    var mc = mapViewport.querySelector(".map-controls");
+    if (mc) mc.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    var zi = document.getElementById("zoom-in");
+    var zo = document.getElementById("zoom-out");
+    var rc = document.getElementById("recenter");
+    if (zi) zi.addEventListener("click", function () { zoomByFactor(1.25); });
+    if (zo) zo.addEventListener("click", function () { zoomByFactor(1 / 1.25); });
+    if (rc) rc.addEventListener("click", function () { recenter(true); });
+
+    window.addEventListener("resize", function () { if (initialized) { clampView(); applyView(); } });
   }
 
   /* ===================================================================
@@ -474,32 +699,15 @@
     window.setTimeout(function () { node.classList.remove("pulse-gold"); }, 2400);
   }
   function revealEntry(entry) {
-    // Collateral relatives (no tree node, no chip): open their modal directly.
-    if (entry.type === "modal") {
+    // Collateral relatives (no map node): open their modal directly.
+    if (entry.type === "modal" || !mapNodes[entry.id]) {
       openModal(entry.id, searchInput);
       return;
     }
-    if (entry.toggles) entry.toggles.forEach(expandToggle);
-    var target;
-    if (entry.type === "spouse") {
-      target = entry.chip;
-      var wrap = entry.chip.closest(".card-and-chips");
-      var hostCard = wrap ? wrap.querySelector(".person-card") : null;
-      if (hostCard) {
-        var hostId = hostCard.getAttribute("data-person");
-        var hostEntry = searchIndex.find(function (e) { return e.type === "node" && e.id === hostId; });
-        if (hostEntry && hostEntry.toggles) hostEntry.toggles.forEach(expandToggle);
-      }
-    } else {
-      target = entry.card;
-    }
-    if (!target) return;
-    window.requestAnimationFrame(function () {
-      window.setTimeout(function () {
-        target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center", inline: "center" });
-        pulse(target);
-      }, 60);
-    });
+    // On-map person: pan + zoom the map to them, then pulse the card.
+    var card = entry.card || (mapNodes[entry.id] && mapNodes[entry.id].card);
+    centerOnNode(entry.id, true);
+    window.setTimeout(function () { pulse(card); }, prefersReducedMotion() ? 0 : 540);
   }
 
   /* ===================================================================
@@ -848,8 +1056,7 @@
     lockBtn.addEventListener("click", function () {
       clearStoredKey();
       // Purge every trace of the decrypted data from the DOM.
-      var treeRoot = document.getElementById("tree-root");
-      if (treeRoot) treeRoot.innerHTML = "";
+      clearMap();
       if (dialogBody) dialogBody.innerHTML = "";
       if (dialog && dialog.open) dialog.close();
       DATA = null; people = {}; sources = {};
@@ -882,15 +1089,16 @@
     var discEl = document.getElementById("footer-disclaimer");
     if (discEl && data.meta && data.meta.disclaimer) discEl.textContent = data.meta.disclaimer;
 
-    var treeRoot = document.getElementById("tree-root");
-    if (treeRoot) {
-      treeRoot.innerHTML = "";
-      var rootNode = buildNode(data.root, []);
-      if (rootNode) { rootNode.classList.add("is-root"); treeRoot.appendChild(rootNode); }
+    // The map cards need a laid-out container to measure their heights, so
+    // reveal the page-frame now (still hidden behind the gate's overlay).
+    if (pageFrame) pageFrame.hidden = false;
+
+    if (mapCanvas) {
+      buildMap(data.root);
 
       // Index EVERYONE else (collateral relatives — uncles, aunts, cousins —
-      // who have no tree node or chip) so search can still find them; selecting
-      // one opens their modal directly.
+      // who have no map node) so search can still find them; selecting one
+      // opens their modal directly.
       var indexed = {};
       searchIndex.forEach(function (e) { indexed[e.id] = 1; });
       Object.keys(people).forEach(function (id) {
@@ -899,28 +1107,13 @@
         }
       });
 
-      if (!prefersReducedMotion()) {
-        var nodes = treeRoot.querySelectorAll(".tree-node");
-        nodes.forEach(function (c, i) {
-          c.style.setProperty("--enter-delay", (Math.min(i, 16) * 45) + "ms");
-          c.classList.add("enter");
-        });
-        window.requestAnimationFrame(function () {
-          window.requestAnimationFrame(function () {
-            nodes.forEach(function (c) { c.classList.add("entered"); });
-          });
-        });
-      }
-      // Center the horizontal scroll on the root person (the tree can be wider
-      // than the viewport; scroll is contained within .tree-viewport).
+      wireMapGestures();
+      // Place the initial view once layout is settled, then a gentle fade-in.
       window.requestAnimationFrame(function () {
-        var vp = document.querySelector(".tree-viewport");
-        var rootCard = nodeCardById[data.root];
-        if (vp && rootCard) {
-          var vpRect = vp.getBoundingClientRect();
-          var cRect = rootCard.getBoundingClientRect();
-          vp.scrollLeft += (cRect.left + cRect.width / 2) - (vpRect.left + vpRect.width / 2);
-        }
+        initialView();
+        mapCanvas.classList.remove("map-enter");
+        void mapCanvas.offsetWidth;
+        if (!prefersReducedMotion()) mapCanvas.classList.add("map-enter");
       });
     }
     wireSearch();
