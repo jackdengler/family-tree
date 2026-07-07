@@ -332,7 +332,9 @@
   /* -------------------------------------------------------------------
      Pan / zoom engine — transform-only, Pointer Events, wheel + pinch.
      ------------------------------------------------------------------- */
-  var MIN_SCALE = 0.3, MAX_SCALE = 2.5;
+  // Min scale is low enough that the full ~8-generation chart (canvas ≈ 5500px
+  // wide) fits within a 390/360px phone with margin; 0.12 would only fit desktop.
+  var MIN_SCALE = 0.035, MAX_SCALE = 2.5;
   var view = { tx: 0, ty: 0, scale: 1 };
   var pointers = new Map();
   var panLast = null, pinch = null, gestureMoved = 0, suppressClick = false, lastTap = null;
@@ -382,15 +384,21 @@
     if (!n) return;
     centerOnCanvas(n.sx, n.sy, clampNum(Math.max(view.scale, 1), MIN_SCALE, MAX_SCALE), 0.5, animate);
   }
-  function recenter(animate) {
+  // Scale that fits the ENTIRE layout (bounds already include padding) within
+  // the viewport with a small margin, clamped to the allowed zoom range.
+  function fitScale() {
     var margin = 70;
-    var s = clampNum(Math.min((vw() - margin * 2) / mapBounds.w, (vh() - margin * 2) / mapBounds.h), MIN_SCALE, MAX_SCALE);
-    centerOnCanvas(mapBounds.w / 2, mapBounds.h / 2, s, 0.5, animate);
+    return clampNum(
+      Math.min((vw() - margin * 2) / mapBounds.w, (vh() - margin * 2) / mapBounds.h),
+      MIN_SCALE, MAX_SCALE);
+  }
+  function recenter(animate) {
+    // Fit the whole tree and center it in the viewport.
+    centerOnCanvas(mapBounds.w / 2, mapBounds.h / 2, fitScale(), 0.5, animate);
   }
   function initialView() {
-    // Readable scale, root horizontally centered near the bottom of the view.
-    var s = clampNum(Math.min((vw() - 80) / mapBounds.w, 0.95), 0.5, 0.95);
-    centerOnCanvas(rootCanvasPoint.x, rootCanvasPoint.y, s, 0.72, false);
+    // On load, show the whole chart (comfortable near-fit) centered.
+    centerOnCanvas(mapBounds.w / 2, mapBounds.h / 2, clampNum(fitScale(), MIN_SCALE, 0.9), 0.5, false);
   }
 
   function midpoint(pts) { return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 }; }
