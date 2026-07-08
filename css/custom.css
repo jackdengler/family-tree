@@ -589,6 +589,25 @@ html.dark .pulse-gold {
 
 /* Family cross-links: Parents / Spouse / Children / Siblings, each a button
    that navigates the open modal to that relative. */
+/* Heritage breakdown inside a person's modal */
+.modal-heritage { margin-bottom: 1.1rem; }
+.heritage-bar {
+  display: flex;
+  height: 0.7rem;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 0.15rem 0 0.6rem;
+  box-shadow: inset 0 0 0 1px rgba(43, 33, 24, 0.08);
+}
+.heritage-seg { min-width: 2px; height: 100%; }
+.heritage-seg + .heritage-seg { border-left: 1px solid rgba(251, 246, 234, 0.35); }
+html.dark .heritage-seg + .heritage-seg { border-left-color: rgba(0, 0, 0, 0.3); }
+.heritage-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.28rem; }
+.heritage-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; line-height: 1.3; }
+.heritage-swatch { width: 0.8rem; height: 0.8rem; border-radius: 3px; flex: none; }
+.heritage-row-label { flex: 1; color: var(--ink); }
+.heritage-row-pct { color: var(--muted); font-variant-numeric: tabular-nums; }
+
 .modal-family { margin-bottom: 1.1rem; }
 .family-group { margin-bottom: 0.7rem; }
 .family-group:last-child { margin-bottom: 0; }

@@ -598,6 +598,40 @@
     return section;
   }
 
+  // A person's own heritage breakdown, computed from THEIR ancestors (each parent
+  // half, and so on). Shown only when at least one ancestor is known, so it adds
+  // information beyond the person's own birthplace.
+  function buildHeritageSection(p) {
+    var hasAncestors = (p.parents || []).some(function (id) { return people[id]; });
+    if (!hasAncestors) return null;
+    var data = computeOrigins(p.id);
+    if (!data.length) return null;
+    var section = el("section", "modal-heritage");
+    section.appendChild(el("h3", "modal-subhead", "Heritage"));
+    var bar = el("div", "heritage-bar");
+    data.forEach(function (dseg) {
+      var seg = el("span", "heritage-seg");
+      seg.style.width = (dseg.fraction * 100) + "%";
+      seg.style.background = metaFor(dseg.country).color;
+      seg.title = metaFor(dseg.country).label + " — " + fmtPct(dseg.fraction);
+      bar.appendChild(seg);
+    });
+    section.appendChild(bar);
+    var list = el("ul", "heritage-legend");
+    data.forEach(function (drow) {
+      var meta = metaFor(drow.country);
+      var li = el("li", "heritage-row");
+      var sw = el("span", "heritage-swatch");
+      sw.style.background = meta.color;
+      li.appendChild(sw);
+      li.appendChild(el("span", "heritage-row-label", meta.label));
+      li.appendChild(el("span", "heritage-row-pct", fmtPct(drow.fraction)));
+      list.appendChild(li);
+    });
+    section.appendChild(list);
+    return section;
+  }
+
   function buildModal(p) {
     dialogBody.innerHTML = "";
     var header = el("header", "modal-header");
@@ -656,6 +690,9 @@
       unc.appendChild(ul);
       dialogBody.appendChild(unc);
     }
+
+    var heritage = buildHeritageSection(p);
+    if (heritage) dialogBody.appendChild(heritage);
 
     var family = buildFamilySection(p);
     if (family) dialogBody.appendChild(family);
