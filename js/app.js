@@ -1179,6 +1179,7 @@
     "Scotland":          { label: "Scotland",                                  color: "#5b6da8" },
     "Wales":             { label: "Wales",                                     color: "#4f8a86" },
     "France":            { label: "France",                                    color: "#8c5a8c" },
+    "Channel Islands":   { label: "Channel Islands (Jersey)",                  color: "#2f8fb0" },
     "Colonial American": { label: "Colonial American (likely English/British)", color: "#8a7857" }
   };
   var ORIGIN_FALLBACK = "Colonial American";
@@ -1189,7 +1190,11 @@
   function originCountry(place) {
     if (!place) return ORIGIN_FALLBACK;
     var s = String(place).toLowerCase();
-    if (/\bengland\b|warwickshire|durham|london|yorkshire|\bkent\b|essex|somerset|devon|suffolk|norfolk|britain|\buk\b|badby|northampton/.test(s)) return "England";
+    // Channel Islands (Jersey/Guernsey) — check first, and never match "New Jersey".
+    if (/channel\s*islands?|guernsey/.test(s) || (/\bjersey\b/.test(s) && !/new\s+jersey/.test(s))) return "Channel Islands";
+    // England — use unambiguous tokens; avoid essex/suffolk/london/durham, which
+    // collide with US places (Essex & Suffolk Co. MA, New London CT, Durham NC).
+    if (/\bengland\b|warwickshire|yorkshire|\bkent\b|somerset|\bdevon\b|norfolk|\bsurrey\b|britain|\buk\b|badby|northampton|county\s*durham/.test(s)) return "England";
     if (/ireland|monaghan|carrickmacross|\bcork\b|galway|\bmayo\b|donegal/.test(s)) return "Ireland";
     if (/poland|galicia|siennów|siennow|przemy/.test(s)) return "Poland";
     if (/germany|bavaria|bayern|prussia|baden/.test(s)) return "Germany";
