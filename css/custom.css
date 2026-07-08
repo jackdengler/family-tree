@@ -12,6 +12,7 @@
   --gold: #a8752f;
   --gold-soft: #c79a5a;
   --border: #d8c9a3;
+  --voyage: #2c6e6a; /* immigrant "crossed the ocean" accent */
 
   --hairline: 1px solid var(--border);
   --gold-hairline: 1px solid var(--gold);
@@ -29,6 +30,7 @@ html.dark {
   --gold: #d4af37;
   --gold-soft: #b9942f;
   --border: #3a3226;
+  --voyage: #6bc2b8; /* immigrant "crossed the ocean" accent (dark) */
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.4);
   --shadow-lift: 0 4px 10px rgba(0, 0, 0, 0.45), 0 14px 34px rgba(0, 0, 0, 0.55);
@@ -344,6 +346,26 @@ html.dark .theme-icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
 .person-card.is-placeholder {
   border-style: dashed;
   border-color: var(--gold-soft);
+}
+/* Immigrant generation: born in Europe, died in North America — a distinct
+   "crossed the ocean" ring so these ancestors stand out in the tree. */
+.person-card.is-immigrant {
+  border-color: var(--voyage);
+  box-shadow: var(--shadow-card), 0 0 0 2px color-mix(in srgb, var(--voyage) 55%, transparent);
+}
+.person-card.is-immigrant:hover {
+  border-color: var(--voyage);
+  box-shadow: var(--shadow-lift), 0 0 0 2px var(--voyage);
+}
+.card-immigrant-mark {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--voyage);
+  opacity: 0.9;
+  pointer-events: none;
 }
 .card-inner { display: flex; flex-direction: column; gap: 0.15rem; }
 .card-name-row { display: flex; align-items: baseline; gap: 0.35rem; }

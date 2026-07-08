@@ -145,6 +145,15 @@
     return sibs;
   }
 
+  // A person "crossed the ocean" if they were born in Europe but died in North
+  // America — i.e. the immigrant generation. Matched loosely on recorded places.
+  var EUROPE_RE = /\b(europe|poland|galicia|silesia|prussia|austria|hungary|bohemia|moravia|ireland|monaghan|england|scotland|wales|glamorgan|cornwall|channel\s*islands?|guernsey|germany|bavaria|italy|france|netherlands|holland|surrey|warwickshire|lincolnshire|county\s*durham|kenilworth|rowington|wootton\s*wawen|sienn[oó]w)\b/i;
+  var NORTH_AMERICA_RE = /\b(united\s*states|u\.s\.?a?|america|canada|ontario|quebec|nova\s*scotia|pennsylvania|maryland|minnesota|ohio|connecticut|massachusetts|new\s*hampshire|new\s*jersey|maine|new\s*york|virginia|west\s*virginia|rhode\s*island|delaware|michigan|illinois|wisconsin|iowa|missouri|kentucky|indiana)\b/i;
+  function placeOf(ev) { return (ev && ev.place) || ""; }
+  function crossedOcean(p) {
+    return EUROPE_RE.test(placeOf(p.birth)) && NORTH_AMERICA_RE.test(placeOf(p.death));
+  }
+
   function makePersonCard(p) {
     var card = el("button", "person-card");
     card.type = "button";
@@ -152,6 +161,10 @@
     if (p.living) card.classList.add("is-living");
     if (hasUncertainty(p)) card.classList.add("is-uncertain");
     if (p.uncertain === true) card.classList.add("is-placeholder");
+    if (crossedOcean(p)) {
+      card.classList.add("is-immigrant");
+      card.title = "Born in Europe, died in North America — crossed the ocean";
+    }
     card.setAttribute("aria-label", fullName(p) + ", " + p.relation + ". Open details.");
 
     var inner = el("span", "card-inner");
@@ -187,6 +200,11 @@
     inner.appendChild(metaRow);
 
     card.appendChild(inner);
+    if (crossedOcean(p)) {
+      var mark = el("span", "card-immigrant-mark", "⚓");
+      mark.setAttribute("aria-hidden", "true");
+      card.appendChild(mark);
+    }
     card.addEventListener("click", function () { openModal(p.id, card); });
     nodeCardById[p.id] = card;
     return card;
