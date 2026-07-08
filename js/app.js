@@ -1063,11 +1063,28 @@
   renderDots();
 
   if (keypad) {
+    var lastPointerTap = -1000;
+    function actKey(btn) {
+      if (btn.dataset.action === "delete") deleteDigit();
+      else if (btn.dataset.digit != null) addDigit(btn.dataset.digit);
+    }
+    // Respond on pointerdown so a tap registers the instant the finger lands —
+    // far snappier than waiting for `click` (which fires only on release, after
+    // the browser's tap-disambiguation delay). Native :active gives the press
+    // feedback. `click` is kept as a guarded fallback for keyboard / assistive
+    // tech (those clicks have no preceding pointerdown, so they're not skipped).
+    keypad.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return; // primary button only
+      var btn = e.target.closest("button.key");
+      if (!btn || btn.classList.contains("key-blank")) return;
+      lastPointerTap = e.timeStamp;
+      actKey(btn);
+    });
     keypad.addEventListener("click", function (e) {
       var btn = e.target.closest("button.key");
       if (!btn) return;
-      if (btn.dataset.action === "delete") deleteDigit();
-      else if (btn.dataset.digit != null) addDigit(btn.dataset.digit);
+      if (e.timeStamp - lastPointerTap < 700) return; // already handled on pointerdown
+      actKey(btn);
     });
   }
 

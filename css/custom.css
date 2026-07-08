@@ -830,9 +830,16 @@ html.dark .gate-error { color: #e0876b; }
   font-family: "Cormorant Garamond", Georgia, serif;
   cursor: pointer;
   user-select: none;
+  -webkit-user-select: none;
+  /* instant tap: no 300ms double-tap-zoom wait, no grey iOS tap-flash */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.15s var(--ease), border-color 0.15s var(--ease),
     transform 0.08s var(--ease), box-shadow 0.15s var(--ease);
 }
+/* Press feedback lands immediately (no ease-in delay), then eases back out. */
+.key:active,
+.key.key-pressed { transition-duration: 0s; }
 .key-blank { background: transparent; border: none; cursor: default; pointer-events: none; }
 .key:hover { border-color: var(--gold); }
 .key:active,
