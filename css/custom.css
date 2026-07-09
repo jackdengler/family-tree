@@ -996,7 +996,12 @@ html.dark .gate-error { color: #e0876b; }
   position: absolute;
   top: 0; left: 0;
   transform-origin: 0 0;
-  will-change: transform;
+  /* NOTE: `will-change: transform` is intentionally NOT set here. A permanent
+     compositor promotion makes the browser cache one rasterized texture of the
+     text and GPU-scale it, so the labels blur (badly when zoomed far out). We
+     instead toggle will-change ON only during an active pan/zoom gesture (see
+     applyView in app.js) and clear it at rest, so the browser re-rasterizes the
+     text crisply at whatever scale the map has settled at. */
 }
 .map-canvas.map-enter { animation: mapFade 0.6s var(--ease); }
 @keyframes mapFade { from { opacity: 0; } to { opacity: 1; } }
@@ -1012,6 +1017,20 @@ html.dark .gate-error { color: #e0876b; }
   min-width: 0;
   max-width: none;
 }
+/* Map cards are tuned tighter than the (unused legacy) flow cards so the whole
+   chart reads compact without feeling cramped. Kept readable at 1:1. */
+.map-canvas .person-card.map-card {
+  padding: 0.58rem 0.72rem;
+  border-radius: 10px;
+}
+.map-card .card-inner { gap: 0.1rem; }
+.map-card .card-name { font-size: 1.2rem; line-height: 1.05; }
+.map-card .card-relation { font-size: 0.66rem; letter-spacing: 0.03em; }
+.map-card .card-meta { margin-top: 0.28rem; gap: 0.4rem 0.5rem; }
+.map-card .card-life { font-size: 0.84rem; }
+.map-card .card-sources,
+.map-card .card-more-children { font-size: 0.66rem; padding: 0.03rem 0.42rem; }
+.map-card .living-badge { font-size: 0.64rem; padding: 0.06rem 0.44rem; }
 .map-endcap {
   position: absolute;
   box-sizing: border-box;

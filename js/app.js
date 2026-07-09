@@ -215,10 +215,10 @@
      y = generation (root at the bottom); x by recursive leaf-packing so
      nothing overlaps and a couple sits centered over their shared child.
      ------------------------------------------------------------------- */
-  var CARD_W = 200;      // fixed card width on the map (px, canvas space)
-  var ROW_STEP = 215;    // vertical distance between generation centers
-  var X_STEP = 250;      // horizontal spacing between packed leaves
-  var ENDCAP_H = 40;     // reserved space above a line's end
+  var CARD_W = 176;      // fixed card width on the map (px, canvas space)
+  var ROW_STEP = 156;    // vertical distance between generation centers
+  var X_STEP = 208;      // horizontal spacing between packed leaves
+  var ENDCAP_H = 30;     // reserved space above a line's end
 
   var mapViewport = document.getElementById("map-viewport");
   var mapCanvas = document.getElementById("map-canvas");
@@ -292,7 +292,7 @@
       minT = Math.min(minT, n.y - n.h / 2 - (n.parents.length ? 0 : ENDCAP_H));
       maxB = Math.max(maxB, n.y + n.h / 2);
     });
-    var PAD = 150;
+    var PAD = 96;
     var ox = -minL + PAD, oy = -minT + PAD;
     mapBounds.w = (maxR - minL) + PAD * 2;
     mapBounds.h = (maxB - minT) + PAD * 2;
@@ -368,13 +368,23 @@
   }
   function applyView(animate) {
     if (!mapCanvas) return;
-    if (animate && !prefersReducedMotion()) {
+    var animating = animate && !prefersReducedMotion();
+    if (animating) {
       mapCanvas.style.transition = "transform 0.5s var(--ease)";
       window.clearTimeout(applyView._t);
       applyView._t = window.setTimeout(function () { mapCanvas.style.transition = ""; }, 540);
     } else {
       mapCanvas.style.transition = "";
     }
+    // Promote to a compositor layer only WHILE moving, then drop the promotion
+    // at rest. This keeps pans/zooms smooth but lets the browser re-rasterize
+    // the card text crisply at the settled scale — so labels never stay a
+    // blurry, GPU-stretched bitmap (the bug when zoomed far out).
+    mapCanvas.style.willChange = "transform";
+    window.clearTimeout(applyView._wc);
+    applyView._wc = window.setTimeout(function () {
+      mapCanvas.style.willChange = "auto";
+    }, animating ? 620 : 220);
     mapCanvas.style.transform = "translate(" + view.tx + "px," + view.ty + "px) scale(" + view.scale + ")";
   }
   function zoomAbout(clientX, clientY, newScale) {
